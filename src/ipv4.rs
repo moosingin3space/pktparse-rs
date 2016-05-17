@@ -1,6 +1,6 @@
 //! Handles parsing of IPv4 headers
 
-use nom::IResult;
+use nom::{IResult, be_u8};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct IPv4Address(pub [u8; 4]);
@@ -26,16 +26,12 @@ pub struct IPv4Header {
     pub dest_addr : IPv4Address
 }
 
-fn to_ipv4_protocol(i: &[u8]) -> Option<IPv4Protocol> {
-    if i.len() < 1 {
-        None
-    } else {
-        match i[0] {
-            1 => Some(IPv4Protocol::ICMP),
-            6 => Some(IPv4Protocol::TCP),
-            17 => Some(IPv4Protocol::UDP),
-            _ => None
-        }
+fn to_ipv4_protocol(i: u8) -> Option<IPv4Protocol> {
+    match i {
+        1 => Some(IPv4Protocol::ICMP),
+        6 => Some(IPv4Protocol::TCP),
+        17 => Some(IPv4Protocol::UDP),
+        _ => None
     }
 }
 
@@ -45,15 +41,15 @@ fn to_ipv4_address(i: &[u8]) -> IPv4Address {
 
 named!(two_nibbles<&[u8], (u8, u8)>, bits!(pair!(take_bits!(u8, 4), take_bits!(u8, 4))));
 named!(flag_frag_offset<&[u8], (u8, u16)>, bits!(pair!(take_bits!(u8, 3), take_bits!(u16, 13))));
-named!(protocol<&[u8], IPv4Protocol>, map_opt!(take!(1), to_ipv4_protocol));
+named!(protocol<&[u8], IPv4Protocol>, map_opt!(be_u8, to_ipv4_protocol));
 named!(address<&[u8], IPv4Address>, map!(take!(4), to_ipv4_address));
 named!(ipparse<&[u8], IPv4Header>,
        chain!(verihl : two_nibbles ~
-              tos : take!(1) ~
+              tos : be_u8 ~
               length : u16!(true) ~
               id : u16!(true) ~
               flagfragoffset : flag_frag_offset ~
-              ttl : take!(1) ~
+              ttl : be_u8 ~
               proto : protocol ~
               chksum : u16!(true) ~
               src_addr : address ~
@@ -61,12 +57,12 @@ named!(ipparse<&[u8], IPv4Header>,
               || { IPv4Header {
                   version: verihl.0,
                   ihl: verihl.1 << 2,
-                  tos: tos[0],
+                  tos: tos,
                   length: length,
                   id: id,
                   flags: flagfragoffset.0,
                   fragment_offset: flagfragoffset.1,
-                  ttl: ttl[0],
+                  ttl: ttl,
                   protocol: proto,
                   chksum: chksum,
                   source_addr: src_addr,
