@@ -1,6 +1,8 @@
 [package]
 name = "pktparse"
 version = "0.1.0"
-authors = ["nathanmoos"]
+authors = ["Nathan Moos"]
 
 [dependencies]
+nom = "^1.2.3"
+arrayref = "0.3.2"

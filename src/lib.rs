@@ -1,6 +1,6 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-    }
-}
+#[macro_use]
+extern crate nom;
+#[macro_use]
+extern crate arrayref;
+
+pub mod ethernet;
