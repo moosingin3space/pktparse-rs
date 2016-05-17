@@ -4,3 +4,4 @@ extern crate nom;
 extern crate arrayref;
 
 pub mod ethernet;
+pub mod ipv4;

@@ -1,5 +1,7 @@
 //! Handles parsing of Ethernet headers
 
+use nom::IResult;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct MacAddress([u8; 6]);
 #[derive(Debug, PartialEq, Eq)]
@@ -36,6 +38,10 @@ named!(ethernet_frame<&[u8], EthernetFrame>, chain!(
     dest_mac: mac_address ~ src_mac: mac_address ~ et: ethertype,
     || EthernetFrame{source_mac: src_mac, dest_mac: dest_mac, ethertype: et}
 ));
+
+pub fn parse_ethernet_frame(i: &[u8]) -> IResult<&[u8], EthernetFrame> {
+    ethernet_frame(i)
+}
 
 #[cfg(test)]
 mod tests {
