@@ -3,7 +3,7 @@
 use nom::IResult;
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct IPv4Address([u8; 4]);
+pub struct IPv4Address(pub [u8; 4]);
 #[derive(Debug, PartialEq, Eq)]
 pub enum IPv4Protocol {
     ICMP,
@@ -12,18 +12,18 @@ pub enum IPv4Protocol {
 }
 #[derive(Debug, PartialEq, Eq)]
 pub struct IPv4Header {
-    version : u8,
-    ihl : u8,
-    tos : u8,
-    length : u16,
-    id : u16,
-    flags : u8,
-    fragment_offset : u16,
-    ttl : u8,
-    protocol : IPv4Protocol,
-    chksum : u16,
-    source_addr : IPv4Address,
-    dest_addr : IPv4Address
+    pub version : u8,
+    pub ihl : u8,
+    pub tos : u8,
+    pub length : u16,
+    pub id : u16,
+    pub flags : u8,
+    pub fragment_offset : u16,
+    pub ttl : u8,
+    pub protocol : IPv4Protocol,
+    pub chksum : u16,
+    pub source_addr : IPv4Address,
+    pub dest_addr : IPv4Address
 }
 
 fn to_ipv4_protocol(i: &[u8]) -> Option<IPv4Protocol> {

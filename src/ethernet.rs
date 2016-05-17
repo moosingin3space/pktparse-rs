@@ -3,7 +3,7 @@
 use nom::IResult;
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct MacAddress([u8; 6]);
+pub struct MacAddress(pub [u8; 6]);
 #[derive(Debug, PartialEq, Eq)]
 pub enum EtherType {
     IPv4,
@@ -13,9 +13,9 @@ pub enum EtherType {
 }
 #[derive(Debug, PartialEq, Eq)]
 pub struct EthernetFrame {
-    source_mac : MacAddress,
-    dest_mac   : MacAddress,
-    ethertype  : EtherType
+    pub source_mac : MacAddress,
+    pub dest_mac   : MacAddress,
+    pub ethertype  : EtherType
 }
 
 fn to_ethertype(i: u16) -> Option<EtherType> {
