@@ -1,6 +1,6 @@
 //! Handles parsing of TCP headers
 
-use nom::IResult;
+use nom::{be_u8, IResult};
 
 // TCP Header Format
 //
@@ -34,8 +34,33 @@ use nom::IResult;
 //    FIN:  No more data from sender
 
 
+const END_OF_OPTIONS: u8 =  0;
+const NO_OP: u8 = 1;
+const MSS: u8 = 2;
+const WINDOW_SCALE: u8 = 3;
+const SACK_PERMITTED: u8 = 4;
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum TcpOption {
+    EndOfOptions,
+    NoOperation,
+    MaximumSegmentSize(MaximumSegmentSize),
+    WindowScale(WindowScale),
+    SackPermitted,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct MaximumSegmentSize {
+    pub mss: u16,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct WindowScale {
+    pub scaling: u8,
+}
+
 #[derive(Debug, PartialEq, Eq, Default)]
-pub struct TcpHeader<'a> {
+pub struct TcpHeader {
     pub source_port: u16,
     pub dest_port: u16,
     pub sequence_no: u32,
@@ -51,7 +76,7 @@ pub struct TcpHeader<'a> {
     pub window: u16,
     pub checksum: u16,
     pub urgent_pointer: u16,
-    pub options: Option<&'a[u8]>,
+    pub options: Option<Vec<TcpOption>>,
 }
 named!(dataof_res_flags<&[u8], (u8, u8, u8)>,
     bits!(tuple!(
@@ -60,7 +85,7 @@ named!(dataof_res_flags<&[u8], (u8, u8, u8)>,
         take_bits!(u8, 6))));
 
 named!(tcp_parse<&[u8], TcpHeader>,
-       dbg_dmp!(chain!(src: u16!(true) ~
+            chain!(src: u16!(true) ~
               dst: u16!(true) ~
               seq: u32!(true) ~
               ack: u32!(true) ~
@@ -86,15 +111,63 @@ named!(tcp_parse<&[u8], TcpHeader>,
                   checksum : checksum,
                   urgent_pointer : urgent_ptr,
                   options : None
-              }})));
+              }}));
+
+
+named!(tcp_parse_option<&[u8], TcpOption>,
+        switch!(be_u8,
+            END_OF_OPTIONS => chain!(take!(0),
+                || TcpOption::EndOfOptions)
+            | NO_OP =>  chain!(take!(0),
+                || TcpOption::NoOperation)
+            | MSS => chain!(_len: be_u8 ~
+                mss: u16!(true),
+                || TcpOption::MaximumSegmentSize(MaximumSegmentSize{mss: mss}))
+            | WINDOW_SCALE => chain!(_len: be_u8 ~
+                scaling: be_u8,
+                || TcpOption::WindowScale(WindowScale{scaling: scaling}))
+            | SACK_PERMITTED => chain!(_len: be_u8,
+                  || TcpOption::SackPermitted)
+            ));
+
+fn tcp_parse_options(i: &[u8]) -> IResult<&[u8], Vec<TcpOption>> {
+    let mut left = i;
+    let mut options: Vec<TcpOption> = vec![];
+    loop {
+        match tcp_parse_option(left) {
+            IResult::Done(l, opt) => {
+                left = l;
+                options.push(opt);
+
+                if let TcpOption::EndOfOptions = opt {
+                    break;
+                }
+            }
+
+            IResult::Incomplete(e) => {
+                return IResult::Incomplete(e);
+            }
+            IResult::Error(e) => {
+                return IResult::Error(e);
+            }
+        }
+    }
+
+    IResult::Done(left, options)
+}
 
 pub fn parse_tcp_header(i: &[u8]) -> IResult<&[u8], TcpHeader> {
     match tcp_parse(i) {
         IResult::Done(left, mut tcp_header) => {
+            // The TCP header is 20 bytes long before options, the remaining bytes contain options
+            // and padding.
             let options_length = (tcp_header.data_offset - 20) as usize;
-            // TODO: For now TcpHeader options are not parsed and contains the raw bytes.
             if options_length > 0 {
-                tcp_header.options = Some(&left[..options_length]);
+                if let IResult::Done(_, options) = tcp_parse_options(&left[0..options_length]) {
+                    tcp_header.options = Some(options);
+                    return IResult::Done(&left[options_length..], tcp_header);
+                }
+
                 IResult::Done(&left[options_length..], tcp_header)
             } else {
                 IResult::Done(left, tcp_header)
@@ -116,7 +189,7 @@ mod tests {
 
     #[test]
     fn test_tcp_parse() {
-        let bytes = [0xc2, 0x1f, /* Source port */ 
+        let bytes = [0xc2, 0x1f, /* Source port */
                      0x00, 0x50, /* Dest port */
                      0x0f, 0xd8, 0x7f, 0x4c, /* Seq no */
                      0xeb, 0x2f, 0x05, 0xc8, /* Ack no */
