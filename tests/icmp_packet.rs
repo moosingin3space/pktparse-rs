@@ -3,9 +3,10 @@ extern crate nom;
 extern crate pktparse;
 
 mod tests {
+    use std::net::Ipv4Addr;
     use nom::IResult::Done;
     use pktparse::{ethernet, ipv4};
-    use pktparse::ipv4::{IPv4Header, IPv4Address, IPv4Protocol};
+    use pktparse::ipv4::{IPv4Header, IPv4Protocol};
     use pktparse::ethernet::{EthernetFrame, MacAddress, EtherType};
 
     #[test]
@@ -42,8 +43,8 @@ mod tests {
             ttl: 64,
             protocol: IPv4Protocol::ICMP,
             chksum: 0x22ed,
-            source_addr: IPv4Address([10, 10, 1, 135]),
-            dest_addr: IPv4Address([10, 10, 1, 180])
+            source_addr: Ipv4Addr::new(10, 10, 1, 135),
+            dest_addr: Ipv4Addr::new(10, 10, 1, 180)
         };
         let parsed_eth_frame = ethernet::parse_ethernet_frame(&bytes);
         if let Done(remaining_data, eth_frame) = parsed_eth_frame {

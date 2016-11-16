@@ -1,9 +1,8 @@
 //! Handles parsing of IPv4 headers
 
 use nom::{IResult, be_u8};
+use std::net::Ipv4Addr;
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct IPv4Address(pub [u8; 4]);
 #[derive(Debug, PartialEq, Eq)]
 pub enum IPv4Protocol {
     ICMP,
@@ -22,8 +21,8 @@ pub struct IPv4Header {
     pub ttl: u8,
     pub protocol: IPv4Protocol,
     pub chksum: u16,
-    pub source_addr: IPv4Address,
-    pub dest_addr: IPv4Address,
+    pub source_addr: Ipv4Addr,
+    pub dest_addr: Ipv4Addr,
 }
 
 fn to_ipv4_protocol(i: u8) -> Option<IPv4Protocol> {
@@ -35,14 +34,15 @@ fn to_ipv4_protocol(i: u8) -> Option<IPv4Protocol> {
     }
 }
 
-fn to_ipv4_address(i: &[u8]) -> IPv4Address {
-    IPv4Address(array_ref![i, 0, 4].clone())
+fn to_ipv4_address(i: &[u8]) -> Ipv4Addr {
+    let octets = array_ref![i, 0, 4];
+    Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3])
 }
 
 named!(two_nibbles<&[u8], (u8, u8)>, bits!(pair!(take_bits!(u8, 4), take_bits!(u8, 4))));
 named!(flag_frag_offset<&[u8], (u8, u16)>, bits!(pair!(take_bits!(u8, 3), take_bits!(u16, 13))));
 named!(protocol<&[u8], IPv4Protocol>, map_opt!(be_u8, to_ipv4_protocol));
-named!(address<&[u8], IPv4Address>, map!(take!(4), to_ipv4_address));
+named!(address<&[u8], Ipv4Addr>, map!(take!(4), to_ipv4_address));
 
 named!(ipparse<&[u8], IPv4Header>,
        chain!(verihl : two_nibbles ~
@@ -76,8 +76,9 @@ pub fn parse_ipv4_header(i: &[u8]) -> IResult<&[u8], IPv4Header> {
 
 #[cfg(test)]
 mod tests {
-    use super::{protocol, IPv4Protocol, ipparse, IPv4Header, IPv4Address};
+    use super::{protocol, IPv4Protocol, ipparse, IPv4Header};
     use nom::IResult;
+    use std::net::Ipv4Addr;
     const EMPTY_SLICE: &'static [u8] = &[];
     macro_rules! mk_protocol_test {
         ($func_name:ident, $bytes:expr, $correct_proto:expr) => (
@@ -96,8 +97,8 @@ mod tests {
     #[test]
     fn ipparse_gets_packet_correct() {
         let bytes = [0x45, /* IP version and length = 20 */
-                     0x00, /* Differentiated services field */ 
-                     0x05, 0xdc, /* Total length */ 
+                     0x00, /* Differentiated services field */
+                     0x05, 0xdc, /* Total length */
                      0x1a, 0xe6, /* Identification */
                      0x20, 0x00, /* flags and fragment offset */
                      0x40, /* TTL */
@@ -117,8 +118,8 @@ mod tests {
             ttl: 64,
             protocol: IPv4Protocol::ICMP,
             chksum: 0x22ed,
-            source_addr: IPv4Address([10, 10, 1, 135]),
-            dest_addr: IPv4Address([10, 10, 1, 180]),
+            source_addr: Ipv4Addr::new(10, 10, 1, 135),
+            dest_addr: Ipv4Addr::new(10, 10, 1, 180),
         };
         assert_eq!(ipparse(&bytes), IResult::Done(EMPTY_SLICE, expectation));
     }
