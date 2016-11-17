@@ -1,6 +1,6 @@
 //! Handles parsing of UDP header
 
-use nom::{IResult, be_u16};
+use nom::be_u16;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct UdpHeader {
