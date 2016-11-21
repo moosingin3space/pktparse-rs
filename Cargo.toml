@@ -1,7 +1,11 @@
 [package]
 name = "pktparse"
 version = "0.1.0"
-authors = ["Nathan Moos"]
+authors = ["Nathan Moos", "Xavier Bestel"]
+description = "Collection of packet parsers"
+repository = "https://github.com/bestouff/pktparse-rs"
+readme = "README.md"
+license = "LGPL-3.0"
 
 [dependencies]
 nom = "^1.2.3"
