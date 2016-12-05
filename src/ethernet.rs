@@ -8,8 +8,48 @@ pub struct MacAddress(pub [u8; 6]);
 pub enum EtherType {
     IPv4,
     ARP,
-    IPv6,
+    WOL,
+    TRILL,
+    DECnet,
+    RARP,
+    AppleTalk,
+    AARP,
     VLAN,
+    IPX,
+    Qnet,
+    IPv6,
+    FlowControl,
+    CobraNet,
+    MPLSuni,
+    MPLSmulti,
+    PPPoEdiscovery,
+    PPPoEsession,
+    HomePlug,
+    EAPOL,
+    PROFINET,
+    HyperSCSI,
+    ATAOE,
+    EtherCAT,
+    QinQ,
+    Powerlink,
+    GOOSE,
+    GSE,
+    LLDP,
+    SERCOS,
+    HomePlugAV,
+    MRP,
+    MACsec,
+    PBB,
+    PTP,
+    PRP,
+    CFM,
+    FCoE,
+    FCoEi,
+    RoCE,
+    TTE,
+    HSR,
+    CTP,
+    VLANdouble,
 }
 #[derive(Debug, PartialEq, Eq)]
 pub struct EthernetFrame {
@@ -20,10 +60,50 @@ pub struct EthernetFrame {
 
 fn to_ethertype(i: u16) -> Option<EtherType> {
     match i {
-        0x0800 => Some(EtherType::IPv4),
-        0x0806 => Some(EtherType::ARP),
-        0x8100 => Some(EtherType::VLAN),
-        0x86DD => Some(EtherType::IPv6),
+        0x0800 => Some(EtherType::IPv4),    // Internet Protocol version 4 (IPv4)
+        0x0806 => Some(EtherType::ARP),    // Address Resolution Protocol (ARP)
+        0x0842 => Some(EtherType::WOL),    // Wake-on-LAN[4]
+        0x22F3 => Some(EtherType::TRILL),    // IETF TRILL Protocol
+        0x6003 => Some(EtherType::DECnet),    // DECnet Phase IV
+        0x8035 => Some(EtherType::RARP),    // Reverse Address Resolution Protocol
+        0x809B => Some(EtherType::AppleTalk),    // AppleTalk (Ethertalk)
+        0x80F3 => Some(EtherType::AARP),    // AppleTalk Address Resolution Protocol (AARP)
+        0x8100 => Some(EtherType::VLAN),    // VLAN-tagged frame (IEEE 802.1Q) and Shortest Path Bridging IEEE 802.1aq[5]
+        0x8137 => Some(EtherType::IPX),    // IPX
+        0x8204 => Some(EtherType::Qnet),    // QNX Qnet
+        0x86DD => Some(EtherType::IPv6),    // Internet Protocol Version 6 (IPv6)
+        0x8808 => Some(EtherType::FlowControl),    // Ethernet flow control
+        0x8819 => Some(EtherType::CobraNet),    // CobraNet
+        0x8847 => Some(EtherType::MPLSuni),    // MPLS unicast
+        0x8848 => Some(EtherType::MPLSmulti),    // MPLS multicast
+        0x8863 => Some(EtherType::PPPoEdiscovery),    // PPPoE Discovery Stage
+        0x8864 => Some(EtherType::PPPoEsession),    // PPPoE Session Stage
+        0x887B => Some(EtherType::HomePlug),    // HomePlug 1.0 MME
+        0x888E => Some(EtherType::EAPOL),    // EAP over LAN (IEEE 802.1X)
+        0x8892 => Some(EtherType::PROFINET),    // PROFINET Protocol
+        0x889A => Some(EtherType::HyperSCSI),    // HyperSCSI (SCSI over Ethernet)
+        0x88A2 => Some(EtherType::ATAOE),    // ATA over Ethernet
+        0x88A4 => Some(EtherType::EtherCAT),    // EtherCAT Protocol
+        0x88A8 => Some(EtherType::QinQ),    // Provider Bridging (IEEE 802.1ad) & Shortest Path Bridging IEEE 802.1aq[5]
+        0x88AB => Some(EtherType::Powerlink),    // Ethernet Powerlink[citation needed]
+        0x88B8 => Some(EtherType::GOOSE),    // GOOSE (Generic Object Oriented Substation event)
+        0x88B9 => Some(EtherType::GSE),    // GSE (Generic Substation Events) Management Services
+        0x88CC => Some(EtherType::LLDP),    // Link Layer Discovery Protocol (LLDP)
+        0x88CD => Some(EtherType::SERCOS),    // SERCOS III
+        0x88E1 => Some(EtherType::HomePlugAV),    // HomePlug AV MME[citation needed]
+        0x88E3 => Some(EtherType::MRP),    // Media Redundancy Protocol (IEC62439-2)
+        0x88E5 => Some(EtherType::MACsec),    // MAC security (IEEE 802.1AE)
+        0x88E7 => Some(EtherType::PBB),    // Provider Backbone Bridges (PBB) (IEEE 802.1ah)
+        0x88F7 => Some(EtherType::PTP),    // Precision Time Protocol (PTP) over Ethernet (IEEE 1588)
+        0x88FB => Some(EtherType::PRP),    // Parallel Redundancy Protocol (PRP)
+        0x8902 => Some(EtherType::CFM),    // IEEE 802.1ag Connectivity Fault Management (CFM) Protocol / ITU-T Recommendation Y.1731 (OAM)
+        0x8906 => Some(EtherType::FCoE),    // Fibre Channel over Ethernet (FCoE)
+        0x8914 => Some(EtherType::FCoEi),    // FCoE Initialization Protocol
+        0x8915 => Some(EtherType::RoCE),    // RDMA over Converged Ethernet (RoCE)
+        0x891D => Some(EtherType::TTE),    // TTEthernet Protocol Control Frame (TTE)
+        0x892F => Some(EtherType::HSR),    // High-availability Seamless Redundancy (HSR)
+        0x9000 => Some(EtherType::CTP),    // Ethernet Configuration Testing Protocol[6]
+        0x9100 => Some(EtherType::VLANdouble),    // VLAN-tagged (IEEE 802.1Q) frame with double tagging
         _ => None,
     }
 }
