@@ -1,6 +1,7 @@
 //! Handles parsing of TCP headers
 
 use nom::{be_u8, IResult};
+use nom::Endianness::Big;
 
 // TCP Header Format
 //
@@ -85,14 +86,14 @@ named!(dataof_res_flags<&[u8], (u8, u8, u8)>,
         take_bits!(u8, 6))));
 
 named!(tcp_parse<&[u8], TcpHeader>,
-            chain!(src: u16!(true) ~
-              dst: u16!(true) ~
-              seq: u32!(true) ~
-              ack: u32!(true) ~
+            chain!(src: u16!(Big) ~
+              dst: u16!(Big) ~
+              seq: u32!(Big) ~
+              ack: u32!(Big) ~
               dataof_res_flags : dataof_res_flags ~
-              window : u16!(true) ~
-              checksum : u16!(true) ~
-              urgent_ptr : u16!(true),
+              window : u16!(Big) ~
+              checksum : u16!(Big) ~
+              urgent_ptr : u16!(Big),
               || {
                   TcpHeader {
                   source_port: src,
@@ -121,7 +122,7 @@ named!(tcp_parse_option<&[u8], TcpOption>,
             | NO_OP =>  chain!(take!(0),
                 || TcpOption::NoOperation)
             | MSS => chain!(_len: be_u8 ~
-                mss: u16!(true),
+                mss: u16!(Big),
                 || TcpOption::MaximumSegmentSize(MaximumSegmentSize{mss: mss}))
             | WINDOW_SCALE => chain!(_len: be_u8 ~
                 scaling: be_u8,

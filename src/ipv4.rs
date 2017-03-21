@@ -1,6 +1,7 @@
 //! Handles parsing of IPv4 headers
 
 use nom::{IResult, be_u8};
+use nom::Endianness::Big;
 use std::net::Ipv4Addr;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -47,12 +48,12 @@ named!(address<&[u8], Ipv4Addr>, map!(take!(4), to_ipv4_address));
 named!(ipparse<&[u8], IPv4Header>,
        chain!(verihl : two_nibbles ~
               tos : be_u8 ~
-              length : u16!(true) ~
-              id : u16!(true) ~
+              length : u16!(Big) ~
+              id : u16!(Big) ~
               flagfragoffset : flag_frag_offset ~
               ttl : be_u8 ~
               proto : protocol ~
-              chksum : u16!(true) ~
+              chksum : u16!(Big) ~
               src_addr : address ~
               dst_addr : address,
               || { IPv4Header {

@@ -1,6 +1,7 @@
 //! Handles parsing of Ethernet headers
 
 use nom::IResult;
+use nom::Endianness::Big;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct MacAddress(pub [u8; 6]);
@@ -113,7 +114,7 @@ fn to_mac_address(i: &[u8]) -> MacAddress {
 }
 
 named!(mac_address<&[u8], MacAddress>, map!(take!(6), to_mac_address));
-named!(ethertype<&[u8], EtherType>, map_opt!(u16!(true), to_ethertype));
+named!(ethertype<&[u8], EtherType>, map_opt!(u16!(Big), to_ethertype));
 named!(ethernet_frame<&[u8], EthernetFrame>, chain!(
     dest_mac: mac_address ~
     src_mac: mac_address ~
