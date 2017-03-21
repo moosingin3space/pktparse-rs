@@ -6,9 +6,25 @@ use std::net::Ipv4Addr;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum IPv4Protocol {
+    HOPOPT,
     ICMP,
+    IGMP,
+    GGP,
+    IPINIP,
+    ST,
     TCP,
+    CBT,
+    EGP,
+    IGP,
+    BBNRCCMON,
+    NVPII,
+    PUP,
+    ARGUS,
+    EMCON,
+    XNET,
+    CHAOS,
     UDP,
+    IPV6,
 }
 #[derive(Debug, PartialEq, Eq)]
 pub struct IPv4Header {
@@ -28,9 +44,25 @@ pub struct IPv4Header {
 
 fn to_ipv4_protocol(i: u8) -> Option<IPv4Protocol> {
     match i {
+        0 => Some(IPv4Protocol::HOPOPT),
         1 => Some(IPv4Protocol::ICMP),
+        2 => Some(IPv4Protocol::IGMP),
+        3 => Some(IPv4Protocol::GGP),
+        4 => Some(IPv4Protocol::IPINIP),
+        5 => Some(IPv4Protocol::ST),
         6 => Some(IPv4Protocol::TCP),
+        7 => Some(IPv4Protocol::CBT),
+        8 => Some(IPv4Protocol::EGP),
+        9 => Some(IPv4Protocol::IGP),
+        10 => Some(IPv4Protocol::BBNRCCMON),
+        11 => Some(IPv4Protocol::NVPII),
+        12 => Some(IPv4Protocol::PUP),
+        13 => Some(IPv4Protocol::ARGUS),
+        14 => Some(IPv4Protocol::EMCON),
+        15 => Some(IPv4Protocol::XNET),
+        16 => Some(IPv4Protocol::CHAOS),
         17 => Some(IPv4Protocol::UDP),
+        41 => Some(IPv4Protocol::IPV6),
         _ => None,
     }
 }
