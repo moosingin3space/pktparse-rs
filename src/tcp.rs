@@ -1,6 +1,6 @@
 //! Handles parsing of TCP headers
 
-use nom::{be_u8, IResult};
+use nom::{be_u8, IResult, Needed};
 use nom::Endianness::Big;
 
 // TCP Header Format
@@ -100,7 +100,7 @@ named!(tcp_parse<&[u8], TcpHeader>,
                   dest_port : dst,
                   sequence_no : seq,
                   ack_no : ack,
-                  data_offset : dataof_res_flags.0 * 4,
+                  data_offset : dataof_res_flags.0,
                   reserved : dataof_res_flags.1,
                   flag_urg : dataof_res_flags.2 & 0b100000 == 0b100000,
                   flag_ack : dataof_res_flags.2 & 0b010000 == 0b010000,
@@ -160,16 +160,18 @@ fn tcp_parse_options(i: &[u8]) -> IResult<&[u8], Vec<TcpOption>> {
 pub fn parse_tcp_header(i: &[u8]) -> IResult<&[u8], TcpHeader> {
     match tcp_parse(i) {
         IResult::Done(left, mut tcp_header) => {
-            // The TCP header is 20 bytes long before options, the remaining bytes contain options
-            // and padding.
-            let options_length = (tcp_header.data_offset - 20) as usize;
-            if options_length > 0 {
-                if let IResult::Done(_, options) = tcp_parse_options(&left[0..options_length]) {
-                    tcp_header.options = Some(options);
-                    return IResult::Done(&left[options_length..], tcp_header);
+            // Offset in words (at least 5)
+            if tcp_header.data_offset > 5 {
+                let options_length = ((tcp_header.data_offset - 5) * 4) as usize;
+                if options_length <= left.len() {
+                    if let IResult::Done(_, options) = tcp_parse_options(&left[0..options_length]) {
+                        tcp_header.options = Some(options);
+                        return IResult::Done(&left[options_length..], tcp_header);
+                    }
+                    IResult::Done(&left[options_length..], tcp_header)
+                } else {
+                    IResult::Incomplete(Needed::Size(options_length - left.len()))
                 }
-
-                IResult::Done(&left[options_length..], tcp_header)
             } else {
                 IResult::Done(left, tcp_header)
             }
