@@ -25,6 +25,7 @@ pub enum IPv4Protocol {
     CHAOS,
     UDP,
     IPV6,
+    Other(u8),
 }
 #[derive(Debug, PartialEq, Eq)]
 pub struct IPv4Header {
@@ -63,13 +64,12 @@ fn to_ipv4_protocol(i: u8) -> Option<IPv4Protocol> {
         16 => Some(IPv4Protocol::CHAOS),
         17 => Some(IPv4Protocol::UDP),
         41 => Some(IPv4Protocol::IPV6),
-        _ => None,
+        other => Some(IPv4Protocol::Other(other)),
     }
 }
 
 fn to_ipv4_address(i: &[u8]) -> Ipv4Addr {
-    let octets = array_ref![i, 0, 4];
-    Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3])
+    Ipv4Addr::from(array_ref![i, 0, 4].clone())
 }
 
 named!(two_nibbles<&[u8], (u8, u8)>, bits!(pair!(take_bits!(u8, 4), take_bits!(u8, 4))));
