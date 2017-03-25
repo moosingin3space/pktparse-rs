@@ -1,11 +1,14 @@
 //! Handles parsing of Ethernet headers
 
 use nom::IResult;
+use nom::Endianness::Big;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct MacAddress(pub [u8; 6]);
 #[derive(Debug, PartialEq, Eq)]
 pub enum EtherType {
+    LANMIN,
+    LANMAX,
     IPv4,
     ARP,
     WOL,
@@ -50,6 +53,7 @@ pub enum EtherType {
     HSR,
     CTP,
     VLANdouble,
+    Other(u16),
 }
 #[derive(Debug, PartialEq, Eq)]
 pub struct EthernetFrame {
@@ -60,6 +64,8 @@ pub struct EthernetFrame {
 
 fn to_ethertype(i: u16) -> Option<EtherType> {
     match i {
+        0x002E => Some(EtherType::LANMIN),    // 802.3 Min data length
+        0x05DC => Some(EtherType::LANMAX),    // 802.3 Max data length
         0x0800 => Some(EtherType::IPv4),    // Internet Protocol version 4 (IPv4)
         0x0806 => Some(EtherType::ARP),    // Address Resolution Protocol (ARP)
         0x0842 => Some(EtherType::WOL),    // Wake-on-LAN[4]
@@ -104,7 +110,7 @@ fn to_ethertype(i: u16) -> Option<EtherType> {
         0x892F => Some(EtherType::HSR),    // High-availability Seamless Redundancy (HSR)
         0x9000 => Some(EtherType::CTP),    // Ethernet Configuration Testing Protocol[6]
         0x9100 => Some(EtherType::VLANdouble),    // VLAN-tagged (IEEE 802.1Q) frame with double tagging
-        _ => None,
+        other => Some(EtherType::Other(other)),
     }
 }
 
@@ -113,7 +119,7 @@ fn to_mac_address(i: &[u8]) -> MacAddress {
 }
 
 named!(mac_address<&[u8], MacAddress>, map!(take!(6), to_mac_address));
-named!(ethertype<&[u8], EtherType>, map_opt!(u16!(true), to_ethertype));
+named!(ethertype<&[u8], EtherType>, map_opt!(u16!(Big), to_ethertype));
 named!(ethernet_frame<&[u8], EthernetFrame>, chain!(
     dest_mac: mac_address ~
     src_mac: mac_address ~

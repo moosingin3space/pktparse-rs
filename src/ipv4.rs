@@ -1,13 +1,31 @@
 //! Handles parsing of IPv4 headers
 
 use nom::{IResult, be_u8};
+use nom::Endianness::Big;
 use std::net::Ipv4Addr;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum IPv4Protocol {
+    HOPOPT,
     ICMP,
+    IGMP,
+    GGP,
+    IPINIP,
+    ST,
     TCP,
+    CBT,
+    EGP,
+    IGP,
+    BBNRCCMON,
+    NVPII,
+    PUP,
+    ARGUS,
+    EMCON,
+    XNET,
+    CHAOS,
     UDP,
+    IPV6,
+    Other(u8),
 }
 #[derive(Debug, PartialEq, Eq)]
 pub struct IPv4Header {
@@ -27,16 +45,31 @@ pub struct IPv4Header {
 
 fn to_ipv4_protocol(i: u8) -> Option<IPv4Protocol> {
     match i {
+        0 => Some(IPv4Protocol::HOPOPT),
         1 => Some(IPv4Protocol::ICMP),
+        2 => Some(IPv4Protocol::IGMP),
+        3 => Some(IPv4Protocol::GGP),
+        4 => Some(IPv4Protocol::IPINIP),
+        5 => Some(IPv4Protocol::ST),
         6 => Some(IPv4Protocol::TCP),
+        7 => Some(IPv4Protocol::CBT),
+        8 => Some(IPv4Protocol::EGP),
+        9 => Some(IPv4Protocol::IGP),
+        10 => Some(IPv4Protocol::BBNRCCMON),
+        11 => Some(IPv4Protocol::NVPII),
+        12 => Some(IPv4Protocol::PUP),
+        13 => Some(IPv4Protocol::ARGUS),
+        14 => Some(IPv4Protocol::EMCON),
+        15 => Some(IPv4Protocol::XNET),
+        16 => Some(IPv4Protocol::CHAOS),
         17 => Some(IPv4Protocol::UDP),
-        _ => None,
+        41 => Some(IPv4Protocol::IPV6),
+        other => Some(IPv4Protocol::Other(other)),
     }
 }
 
 fn to_ipv4_address(i: &[u8]) -> Ipv4Addr {
-    let octets = array_ref![i, 0, 4];
-    Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3])
+    Ipv4Addr::from(array_ref![i, 0, 4].clone())
 }
 
 named!(two_nibbles<&[u8], (u8, u8)>, bits!(pair!(take_bits!(u8, 4), take_bits!(u8, 4))));
@@ -47,12 +80,12 @@ named!(address<&[u8], Ipv4Addr>, map!(take!(4), to_ipv4_address));
 named!(ipparse<&[u8], IPv4Header>,
        chain!(verihl : two_nibbles ~
               tos : be_u8 ~
-              length : u16!(true) ~
-              id : u16!(true) ~
+              length : u16!(Big) ~
+              id : u16!(Big) ~
               flagfragoffset : flag_frag_offset ~
               ttl : be_u8 ~
               proto : protocol ~
-              chksum : u16!(true) ~
+              chksum : u16!(Big) ~
               src_addr : address ~
               dst_addr : address,
               || { IPv4Header {
