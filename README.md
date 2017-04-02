@@ -16,4 +16,8 @@ For now the list of available parsers is rather short:
 - TCP
 ... but I'll gladly accept contributions.
 
-Thanks to @moosingin3space for the initial parsers and @elke for the first patches.
+## Last changes
+
+- update to nom 2.2
+- fixes
+- more IPv4 & Ethernet types
