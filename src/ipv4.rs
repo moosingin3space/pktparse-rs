@@ -68,7 +68,7 @@ fn to_ipv4_protocol(i: u8) -> Option<IPv4Protocol> {
     }
 }
 
-fn to_ipv4_address(i: &[u8]) -> Ipv4Addr {
+pub fn to_ipv4_address(i: &[u8]) -> Ipv4Addr {
     Ipv4Addr::from(array_ref![i, 0, 4].clone())
 }
 

@@ -114,7 +114,7 @@ fn to_ethertype(i: u16) -> Option<EtherType> {
     }
 }
 
-fn to_mac_address(i: &[u8]) -> MacAddress {
+pub fn to_mac_address(i: &[u8]) -> MacAddress {
     MacAddress(array_ref![i, 0, 6].clone())
 }
 
