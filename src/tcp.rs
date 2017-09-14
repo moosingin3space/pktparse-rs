@@ -205,7 +205,7 @@ mod tests {
             dest_port: 80,
             sequence_no: 0x0fd87f4c,
             ack_no: 0xeb2f05c8,
-            data_offset: 20,
+            data_offset: 5,
             reserved: 0,
             flag_urg: false,
             flag_ack: true,
