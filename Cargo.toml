@@ -8,5 +8,5 @@ readme = "README.md"
 license = "LGPL-3.0"
 
 [dependencies]
-nom = "^2.2"
+nom = "^3.2"
 arrayref = "0.3.2"
