@@ -10,12 +10,14 @@ pub struct UdpHeader {
     pub checksum: u16,
 }
 
-named!(pub parse_udp_header<&[u8], UdpHeader>, chain!(
-        source_port: be_u16 ~
-        dest_port: be_u16 ~
-        length: be_u16 ~
-        checksum: be_u16,
-    || UdpHeader{source_port: source_port, dest_port: dest_port, length: length, checksum: checksum}
+named!(pub parse_udp_header<&[u8], UdpHeader>, do_parse!(
+        source_port: be_u16 >>
+        dest_port: be_u16 >>
+        length: be_u16 >>
+        checksum: be_u16 >>
+    (
+        UdpHeader{source_port: source_port, dest_port: dest_port, length: length, checksum: checksum}
+    )
 ));
 
 #[cfg(test)]

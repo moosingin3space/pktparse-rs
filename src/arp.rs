@@ -71,22 +71,22 @@ named!(proto_addr_type<&[u8], ProtocolAddressType>, map_opt!(u16!(Big), to_proto
 named!(operation<&[u8], Operation>, map_opt!(u16!(Big), to_operation));
 named!(mac_address<&[u8], MacAddress>, map!(take!(6), to_mac_address));
 named!(address<&[u8], Ipv4Addr>, map!(take!(4), to_ipv4_address));
-named!(arp_packet<&[u8], ArpPacket>, chain!(
-    hw_addr_type : hw_addr_type ~
-    proto_addr_type : proto_addr_type ~
+named!(arp_packet<&[u8], ArpPacket>, do_parse!(
+    hw_addr_type: hw_addr_type >>
+    proto_addr_type: proto_addr_type >>
 
-    hw_addr_size :  be_u8 ~
-    proto_addr_size: be_u8 ~
+    hw_addr_size:  be_u8 >>
+    proto_addr_size: be_u8 >>
 
-    operation : operation ~
+    operation: operation >>
 
-    src_mac: mac_address ~
-    src_addr: address ~
+    src_mac: mac_address >>
+    src_addr: address >>
 
-    dest_mac: mac_address ~
-    dest_addr: address,
+    dest_mac: mac_address >>
+    dest_addr: address >>
 
-    || { ArpPacket{
+    ({ ArpPacket{
         hw_addr_type: hw_addr_type,
         proto_addr_type: proto_addr_type,
 
@@ -100,7 +100,7 @@ named!(arp_packet<&[u8], ArpPacket>, chain!(
 
         dest_mac: dest_mac,
         dest_addr: dest_addr,
-    }}
+    }})
 ));
 
 pub fn parse_arp_pkt(i: &[u8]) -> IResult<&[u8], ArpPacket> {

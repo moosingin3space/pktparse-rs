@@ -86,15 +86,15 @@ named!(dataof_res_flags<&[u8], (u8, u8, u8)>,
         take_bits!(u8, 6))));
 
 named!(tcp_parse<&[u8], TcpHeader>,
-            chain!(src: u16!(Big) ~
-              dst: u16!(Big) ~
-              seq: u32!(Big) ~
-              ack: u32!(Big) ~
-              dataof_res_flags : dataof_res_flags ~
-              window : u16!(Big) ~
-              checksum : u16!(Big) ~
-              urgent_ptr : u16!(Big),
-              || {
+            do_parse!(src: u16!(Big) >>
+              dst: u16!(Big) >>
+              seq: u32!(Big) >>
+              ack: u32!(Big) >>
+              dataof_res_flags : dataof_res_flags >>
+              window : u16!(Big) >>
+              checksum : u16!(Big) >>
+              urgent_ptr : u16!(Big) >>
+              ({
                   TcpHeader {
                   source_port: src,
                   dest_port : dst,
@@ -112,23 +112,23 @@ named!(tcp_parse<&[u8], TcpHeader>,
                   checksum : checksum,
                   urgent_pointer : urgent_ptr,
                   options : None
-              }}));
+              }})));
 
 
 named!(tcp_parse_option<&[u8], TcpOption>,
         switch!(be_u8,
-            END_OF_OPTIONS => chain!(take!(0),
-                || TcpOption::EndOfOptions)
-            | NO_OP =>  chain!(take!(0),
-                || TcpOption::NoOperation)
-            | MSS => chain!(_len: be_u8 ~
-                mss: u16!(Big),
-                || TcpOption::MaximumSegmentSize(MaximumSegmentSize{mss: mss}))
-            | WINDOW_SCALE => chain!(_len: be_u8 ~
-                scaling: be_u8,
-                || TcpOption::WindowScale(WindowScale{scaling: scaling}))
-            | SACK_PERMITTED => chain!(_len: be_u8,
-                  || TcpOption::SackPermitted)
+            END_OF_OPTIONS => do_parse!(take!(0) >>
+                (TcpOption::EndOfOptions))
+            | NO_OP =>  do_parse!(take!(0) >>
+                (TcpOption::NoOperation))
+            | MSS => do_parse!(_len: be_u8 >>
+                mss: u16!(Big) >>
+                (TcpOption::MaximumSegmentSize(MaximumSegmentSize{mss: mss})))
+            | WINDOW_SCALE => do_parse!(_len: be_u8 >>
+                scaling: be_u8 >>
+                (TcpOption::WindowScale(WindowScale{scaling: scaling})))
+            | SACK_PERMITTED => do_parse!(_len: be_u8 >>
+                  (TcpOption::SackPermitted))
             ));
 
 fn tcp_parse_options(i: &[u8]) -> IResult<&[u8], Vec<TcpOption>> {

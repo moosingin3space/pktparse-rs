@@ -78,17 +78,17 @@ named!(protocol<&[u8], IPv4Protocol>, map_opt!(be_u8, to_ipv4_protocol));
 named!(address<&[u8], Ipv4Addr>, map!(take!(4), to_ipv4_address));
 
 named!(ipparse<&[u8], IPv4Header>,
-       chain!(verihl : two_nibbles ~
-              tos : be_u8 ~
-              length : u16!(Big) ~
-              id : u16!(Big) ~
-              flagfragoffset : flag_frag_offset ~
-              ttl : be_u8 ~
-              proto : protocol ~
-              chksum : u16!(Big) ~
-              src_addr : address ~
-              dst_addr : address,
-              || { IPv4Header {
+       do_parse!(verihl : two_nibbles >>
+              tos : be_u8 >>
+              length : u16!(Big) >>
+              id : u16!(Big) >>
+              flagfragoffset : flag_frag_offset >>
+              ttl : be_u8 >>
+              proto : protocol >>
+              chksum : u16!(Big) >>
+              src_addr : address >>
+              dst_addr : address >>
+              ({ IPv4Header {
                   version: verihl.0,
                   ihl: verihl.1 << 2,
                   tos: tos,
@@ -101,7 +101,7 @@ named!(ipparse<&[u8], IPv4Header>,
                   chksum: chksum,
                   source_addr: src_addr,
                   dest_addr : dst_addr,
-              }}));
+              }})));
 
 pub fn parse_ipv4_header(i: &[u8]) -> IResult<&[u8], IPv4Header> {
     ipparse(i)
