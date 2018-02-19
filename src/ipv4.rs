@@ -5,6 +5,7 @@ use nom::Endianness::Big;
 use std::net::Ipv4Addr;
 
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]
 pub enum IPv4Protocol {
     HOPOPT,
     ICMP,
@@ -28,6 +29,7 @@ pub enum IPv4Protocol {
     Other(u8),
 }
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]
 pub struct IPv4Header {
     pub version: u8,
     pub ihl: u8,
