@@ -4,8 +4,10 @@ use nom::IResult;
 use nom::Endianness::Big;
 
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]
 pub struct MacAddress(pub [u8; 6]);
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]
 pub enum EtherType {
     LANMIN,
     LANMAX,
@@ -56,6 +58,7 @@ pub enum EtherType {
     Other(u16),
 }
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]
 pub struct EthernetFrame {
     pub source_mac: MacAddress,
     pub dest_mac: MacAddress,
