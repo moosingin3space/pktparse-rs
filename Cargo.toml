@@ -1,6 +1,6 @@
 [package]
 name = "pktparse"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Nathan Moos", "Xavier Bestel"]
 description = "Collection of packet parsers"
 repository = "https://github.com/bestouff/pktparse-rs"

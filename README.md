@@ -18,6 +18,4 @@ For now the list of available parsers is rather short:
 
 ## Last changes
 
-- update to nom 2.2
-- fixes
-- more IPv4 & Ethernet types
+- Added serde feature
