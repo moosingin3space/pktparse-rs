@@ -24,7 +24,6 @@ named!(pub parse_udp_header<&[u8], UdpHeader>, do_parse!(
 #[cfg(test)]
 mod tests {
     use super::{UdpHeader, parse_udp_header};
-    use nom::IResult;
     const EMPTY_SLICE: &'static [u8] = &[];
 
     #[test]
@@ -38,6 +37,6 @@ mod tests {
             length: 0x1b,
             checksum: 0x210f,
         };
-        assert_eq!(parse_udp_header(&bytes), IResult::Done(EMPTY_SLICE, expectation));
+        assert_eq!(parse_udp_header(&bytes), Ok((EMPTY_SLICE, expectation)));
     }
 }

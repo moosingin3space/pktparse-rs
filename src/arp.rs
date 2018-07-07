@@ -1,7 +1,7 @@
 //! Handles parsing of Arp pakets
 
-use nom::{IResult, be_u8};
-use nom::Endianness::Big;
+use nom::{IResult, be_u8, be_u16, le_u16};
+use nom::Endianness::{self, Big};
 
 use std::net::Ipv4Addr;
 
@@ -114,8 +114,8 @@ pub fn parse_arp_pkt(i: &[u8]) -> IResult<&[u8], ArpPacket> {
 #[cfg(test)]
 mod tests {
     use super::{arp_packet, ArpPacket, MacAddress, HardwareAddressType, ProtocolAddressType, Operation};
-    use nom::IResult;
     use std::net::Ipv4Addr;
+
     const EMPTY_SLICE: &'static [u8] = &[];
 
     #[test]
@@ -146,6 +146,6 @@ mod tests {
             dest_mac: MacAddress([0xde, 0xad, 0xc0, 0x00, 0xff, 0xee]),
             dest_addr: Ipv4Addr::new(192, 168, 1, 253),
         };
-        assert_eq!(arp_packet(&bytes), IResult::Done(EMPTY_SLICE, expectation));
+        assert_eq!(arp_packet(&bytes), Ok((EMPTY_SLICE, expectation)));
     }
 }

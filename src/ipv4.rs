@@ -1,7 +1,7 @@
 //! Handles parsing of IPv4 headers
 
-use nom::{IResult, be_u8};
-use nom::Endianness::Big;
+use nom::{IResult, be_u8, be_u16, le_u16};
+use nom::Endianness::{self, Big};
 use std::net::Ipv4Addr;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -112,15 +112,15 @@ pub fn parse_ipv4_header(i: &[u8]) -> IResult<&[u8], IPv4Header> {
 #[cfg(test)]
 mod tests {
     use super::{protocol, IPv4Protocol, ipparse, IPv4Header};
-    use nom::IResult;
     use std::net::Ipv4Addr;
+
     const EMPTY_SLICE: &'static [u8] = &[];
     macro_rules! mk_protocol_test {
         ($func_name:ident, $bytes:expr, $correct_proto:expr) => (
             #[test]
             fn $func_name() {
                 let bytes = $bytes;
-                assert_eq!(protocol(&bytes), IResult::Done(EMPTY_SLICE, $correct_proto));
+                assert_eq!(protocol(&bytes), Ok((EMPTY_SLICE, $correct_proto)));
             }
         )
     }
@@ -156,6 +156,6 @@ mod tests {
             source_addr: Ipv4Addr::new(10, 10, 1, 135),
             dest_addr: Ipv4Addr::new(10, 10, 1, 180),
         };
-        assert_eq!(ipparse(&bytes), IResult::Done(EMPTY_SLICE, expectation));
+        assert_eq!(ipparse(&bytes), Ok((EMPTY_SLICE, expectation)));
     }
 }

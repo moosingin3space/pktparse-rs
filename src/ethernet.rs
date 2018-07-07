@@ -1,7 +1,7 @@
 //! Handles parsing of Ethernet headers
 
-use nom::IResult;
-use nom::Endianness::Big;
+use nom::{IResult, le_u16, be_u16};
+use nom::Endianness::{self, Big};
 
 #[derive(Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]
@@ -137,12 +137,13 @@ pub fn parse_ethernet_frame(i: &[u8]) -> IResult<&[u8], EthernetFrame> {
 #[cfg(test)]
 mod tests {
     use super::{mac_address, ethertype, ethernet_frame, MacAddress, EtherType, EthernetFrame};
-    use nom::IResult;
+
     const EMPTY_SLICE: &'static [u8] = &[];
+
     #[test]
     fn mac_address_works() {
         let bytes = [0x9c, 0x5c, 0x8e, 0x90, 0xca, 0xfc];
-        assert_eq!(mac_address(&bytes), IResult::Done(EMPTY_SLICE, MacAddress(bytes)));
+        assert_eq!(mac_address(&bytes), Ok((EMPTY_SLICE, MacAddress(bytes))));
     }
 
     macro_rules! mk_ethertype_test {
@@ -150,7 +151,7 @@ mod tests {
             #[test]
             fn $func_name() {
                 let bytes = $bytes;
-                assert_eq!(ethertype(&bytes), IResult::Done(EMPTY_SLICE, $correct_ethertype));
+                assert_eq!(ethertype(&bytes), Ok((EMPTY_SLICE, $correct_ethertype)));
             }
         )
     }
@@ -171,6 +172,6 @@ mod tests {
             dest_mac: MacAddress([0x00, 0x23, 0x54, 0x07, 0x93, 0x6c]),
             ethertype: EtherType::IPv4,
         };
-        assert_eq!(ethernet_frame(&bytes), IResult::Done(EMPTY_SLICE, expectation));
+        assert_eq!(ethernet_frame(&bytes), Ok((EMPTY_SLICE, expectation)));
     }
 }
