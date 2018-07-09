@@ -3,7 +3,6 @@ extern crate pktparse;
 
 mod tests {
     use std::net::Ipv4Addr;
-    use nom::IResult::Done;
     use pktparse::{ethernet, ipv4};
     use pktparse::ipv4::{IPv4Header, IPv4Protocol};
     use pktparse::ethernet::{EthernetFrame, MacAddress, EtherType};
@@ -46,10 +45,10 @@ mod tests {
             dest_addr: Ipv4Addr::new(10, 10, 1, 180)
         };
         let parsed_eth_frame = ethernet::parse_ethernet_frame(&bytes);
-        if let Done(remaining_data, eth_frame) = parsed_eth_frame {
+        if let Ok((remaining_data, eth_frame)) = parsed_eth_frame {
             assert_eq!(eth_frame, eth_expectation);
             let parsed_ip_hdr = ipv4::parse_ipv4_header(&remaining_data);
-            if let Done(_remaining_data, ip_hdr) = parsed_ip_hdr {
+            if let Ok((_remaining_data, ip_hdr)) = parsed_ip_hdr {
                 assert_eq!(ip_hdr, ip_expectation);
             } else {
                 assert!(false);

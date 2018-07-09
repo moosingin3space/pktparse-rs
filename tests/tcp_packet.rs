@@ -2,7 +2,6 @@ extern crate nom;
 extern crate pktparse;
 
 mod tests {
-    use nom::IResult::Done;
     use pktparse::{ipv4, tcp};
     use pktparse::tcp::TcpOption;
 
@@ -15,8 +14,8 @@ mod tests {
            0xae, 0xe6, 0x50, 0x18, 0x00, 0xe5, 0x76, 0x92, 0x00, 0x00, 0x47, 0x45, 0x54, 0x20, 0x2f,
            0x69, 0x6e, 0x64, 0x65, 0x78, 0x2e, 0x68, 0x74, 0x6d, 0x6c, 0x0a];
 
-        if let Done(remaining, _) = ipv4::parse_ipv4_header(&bytes) {
-            if let Done(remaining, tcp_hdr) = tcp::parse_tcp_header(remaining) {
+        if let Ok((remaining, _)) = ipv4::parse_ipv4_header(&bytes) {
+            if let Ok((remaining, tcp_hdr)) = tcp::parse_tcp_header(remaining) {
                 assert_eq!(tcp_hdr.source_port, 45250);
                 assert_eq!(tcp_hdr.dest_port, 80);
                 assert_eq!(&remaining[..], b"GET /index.html\x0a");
@@ -38,8 +37,8 @@ mod tests {
             0x16, 0xa8, 0x80, 0x12, 0xff, 0xff, 0x9b, 0x80, 0x00, 0x00, 0x02, 0x04, 0x05, 0x3a, 0x01, 
             0x03, 0x03, 0x04, 0x04, 0x02, 0x00, 0x00];
         
-        if let Done(remaining, _) = ipv4::parse_ipv4_header(&bytes) {
-            if let Done(remaining, tcp_hdr) = tcp::parse_tcp_header(remaining) {
+        if let Ok((remaining, _)) = ipv4::parse_ipv4_header(&bytes) {
+            if let Ok((remaining, tcp_hdr)) = tcp::parse_tcp_header(remaining) {
                 assert_eq!(tcp_hdr.source_port, 80);
                 assert_eq!(tcp_hdr.dest_port, 49703);
                 assert_eq!(remaining.len(), 0);

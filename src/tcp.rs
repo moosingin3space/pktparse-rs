@@ -1,7 +1,7 @@
 //! Handles parsing of TCP headers
 
-use nom::{be_u8, IResult, Needed};
-use nom::Endianness::Big;
+use nom::{IResult, Needed, Err, be_u8, be_u16, le_u16, be_u32, le_u32};
+use nom::Endianness::{self, Big};
 
 // TCP Header Format
 //
@@ -140,44 +140,38 @@ fn tcp_parse_options(i: &[u8]) -> IResult<&[u8], Vec<TcpOption>> {
     let mut options: Vec<TcpOption> = vec![];
     loop {
         match tcp_parse_option(left) {
-            IResult::Done(l, opt) => {
+            Ok((l, opt)) => {
                 left = l;
                 options.push(opt);
 
                 if let TcpOption::EndOfOptions = opt {
                     break;
                 }
-            }
-
-            IResult::Incomplete(e) => {
-                return IResult::Incomplete(e);
-            }
-            IResult::Error(e) => {
-                return IResult::Error(e);
-            }
+            },
+            Err(e) => return Err(e),
         }
     }
 
-    IResult::Done(left, options)
+    Ok((left, options))
 }
 
 pub fn parse_tcp_header(i: &[u8]) -> IResult<&[u8], TcpHeader> {
     match tcp_parse(i) {
-        IResult::Done(left, mut tcp_header) => {
+        Ok((left, mut tcp_header)) => {
             // Offset in words (at least 5)
             if tcp_header.data_offset > 5 {
                 let options_length = ((tcp_header.data_offset - 5) * 4) as usize;
                 if options_length <= left.len() {
-                    if let IResult::Done(_, options) = tcp_parse_options(&left[0..options_length]) {
+                    if let Ok((_, options)) = tcp_parse_options(&left[0..options_length]) {
                         tcp_header.options = Some(options);
-                        return IResult::Done(&left[options_length..], tcp_header);
+                        return Ok((&left[options_length..], tcp_header));
                     }
-                    IResult::Done(&left[options_length..], tcp_header)
+                    Ok((&left[options_length..], tcp_header))
                 } else {
-                    IResult::Incomplete(Needed::Size(options_length - left.len()))
+                    Err(Err::Incomplete(Needed::Size(options_length - left.len())))
                 }
             } else {
-                IResult::Done(left, tcp_header)
+                Ok((left, tcp_header))
             }
         }
 
@@ -190,7 +184,6 @@ pub fn parse_tcp_header(i: &[u8]) -> IResult<&[u8], TcpHeader> {
 mod tests {
 
     use super::*;
-    use nom::IResult;
 
     const EMPTY_SLICE: &'static [u8] = &[];
 
@@ -223,6 +216,6 @@ mod tests {
             options: None,
         };
 
-        assert_eq!(parse_tcp_header(&bytes), IResult::Done(EMPTY_SLICE, expectation));
+        assert_eq!(parse_tcp_header(&bytes), Ok((EMPTY_SLICE, expectation)));
     }
 }
