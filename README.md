@@ -18,4 +18,4 @@ For now the list of available parsers is rather short:
 
 ## Last changes
 
-- Added serde feature
+- Port to nom 4
