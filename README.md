@@ -18,4 +18,4 @@ For now the list of available parsers is rather short:
 
 ## Last changes
 
-- Port to nom 4
+- Port to nom 4 (breaking change)
