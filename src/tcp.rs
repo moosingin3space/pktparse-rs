@@ -1,7 +1,7 @@
 //! Handles parsing of TCP headers
 
-use nom::{IResult, Needed, Err, be_u8, be_u16, le_u16, be_u32, le_u32};
-use nom::Endianness::{self, Big};
+use nom::{IResult, Needed, Err, be_u8};
+use nom::Endianness::Big;
 
 // TCP Header Format
 //

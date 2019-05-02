@@ -1,7 +1,7 @@
 //! Handles parsing of Ethernet headers
 
-use nom::{IResult, le_u16, be_u16};
-use nom::Endianness::{self, Big};
+use nom::IResult;
+use nom::Endianness::Big;
 
 #[derive(Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]
