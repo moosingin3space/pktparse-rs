@@ -5,8 +5,8 @@ use nom::Endianness::Big;
 
 use std::net::Ipv4Addr;
 
-use ethernet::{MacAddress, to_mac_address};
-use ipv4::to_ipv4_address;
+use crate::ethernet::{MacAddress, to_mac_address};
+use crate::ipv4::to_ipv4_address;
 
 #[derive(Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]
