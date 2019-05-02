@@ -4,7 +4,8 @@ extern crate pktparse;
 mod tests {
     use std::net::Ipv4Addr;
     use pktparse::{ethernet, ipv4};
-    use pktparse::ipv4::{IPv4Header, IPv4Protocol};
+    use pktparse::ip::IPProtocol;
+    use pktparse::ipv4::IPv4Header;
     use pktparse::ethernet::{EthernetFrame, MacAddress, EtherType};
 
     #[test]
@@ -39,7 +40,7 @@ mod tests {
             flags: 0x01,
             fragment_offset: 0,
             ttl: 64,
-            protocol: IPv4Protocol::ICMP,
+            protocol: IPProtocol::ICMP,
             chksum: 0x22ed,
             source_addr: Ipv4Addr::new(10, 10, 1, 135),
             dest_addr: Ipv4Addr::new(10, 10, 1, 180)
