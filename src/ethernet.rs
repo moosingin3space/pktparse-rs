@@ -1,7 +1,8 @@
 //! Handles parsing of Ethernet headers
 
-use nom::{IResult, le_u16, be_u16};
-use nom::Endianness::{self, Big};
+use nom::IResult;
+use nom::Endianness::Big;
+use std::convert::TryFrom;
 
 #[derive(Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]
@@ -118,7 +119,7 @@ fn to_ethertype(i: u16) -> Option<EtherType> {
 }
 
 pub fn to_mac_address(i: &[u8]) -> MacAddress {
-    MacAddress(array_ref![i, 0, 6].clone())
+    MacAddress(<[u8; 6]>::try_from(i).unwrap())
 }
 
 named!(mac_address<&[u8], MacAddress>, map!(take!(6), to_mac_address));

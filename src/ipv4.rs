@@ -1,7 +1,8 @@
 //! Handles parsing of IPv4 headers
 
-use nom::{IResult, be_u8, be_u16, le_u16};
-use nom::Endianness::{self, Big};
+use nom::{IResult, be_u8};
+use nom::Endianness::Big;
+use std::convert::TryFrom;
 use std::net::Ipv4Addr;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -71,7 +72,7 @@ fn to_ipv4_protocol(i: u8) -> Option<IPv4Protocol> {
 }
 
 pub fn to_ipv4_address(i: &[u8]) -> Ipv4Addr {
-    Ipv4Addr::from(array_ref![i, 0, 4].clone())
+    Ipv4Addr::from(<[u8; 4]>::try_from(i).unwrap())
 }
 
 named!(two_nibbles<&[u8], (u8, u8)>, bits!(pair!(take_bits!(u8, 4), take_bits!(u8, 4))));

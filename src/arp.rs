@@ -1,12 +1,12 @@
 //! Handles parsing of Arp pakets
 
-use nom::{IResult, be_u8, be_u16, le_u16};
-use nom::Endianness::{self, Big};
+use nom::{IResult, be_u8};
+use nom::Endianness::Big;
 
 use std::net::Ipv4Addr;
 
-use ethernet::{MacAddress, to_mac_address};
-use ipv4::to_ipv4_address;
+use crate::ethernet::{MacAddress, to_mac_address};
+use crate::ipv4::to_ipv4_address;
 
 #[derive(Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]

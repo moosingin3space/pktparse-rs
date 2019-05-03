@@ -1,7 +1,7 @@
 //! Handles parsing of TCP headers
 
-use nom::{IResult, Needed, Err, be_u8, be_u16, le_u16, be_u32, le_u32};
-use nom::Endianness::{self, Big};
+use nom::{IResult, Needed, Err, be_u8};
+use nom::Endianness::Big;
 
 // TCP Header Format
 //
@@ -106,12 +106,12 @@ named!(tcp_parse<&[u8], TcpHeader>,
                   ack_no : ack,
                   data_offset : dataof_res_flags.0,
                   reserved : dataof_res_flags.1,
-                  flag_urg : dataof_res_flags.2 & 0b100000 == 0b100000,
-                  flag_ack : dataof_res_flags.2 & 0b010000 == 0b010000,
-                  flag_psh : dataof_res_flags.2 & 0b001000 == 0b001000,
-                  flag_rst : dataof_res_flags.2 & 0b000100 == 0b000100,
-                  flag_syn : dataof_res_flags.2 & 0b000010 == 0b000010,
-                  flag_fin : dataof_res_flags.2 & 0b000001 == 0b000001,
+                  flag_urg : dataof_res_flags.2 & 0b10_0000 == 0b10_0000,
+                  flag_ack : dataof_res_flags.2 & 0b01_0000 == 0b01_0000,
+                  flag_psh : dataof_res_flags.2 & 0b00_1000 == 0b00_1000,
+                  flag_rst : dataof_res_flags.2 & 0b00_0100 == 0b00_0100,
+                  flag_syn : dataof_res_flags.2 & 0b00_0010 == 0b00_0010,
+                  flag_fin : dataof_res_flags.2 & 0b00_0001 == 0b00_0001,
                   window : window,
                   checksum : checksum,
                   urgent_pointer : urgent_ptr,
