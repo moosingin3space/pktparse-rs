@@ -1,34 +1,11 @@
 //! Handles parsing of IPv4 headers
 
+use crate::ip::{self, IPProtocol};
 use nom::{IResult, be_u8};
 use nom::Endianness::Big;
 use std::convert::TryFrom;
 use std::net::Ipv4Addr;
 
-#[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]
-pub enum IPv4Protocol {
-    HOPOPT,
-    ICMP,
-    IGMP,
-    GGP,
-    IPINIP,
-    ST,
-    TCP,
-    CBT,
-    EGP,
-    IGP,
-    BBNRCCMON,
-    NVPII,
-    PUP,
-    ARGUS,
-    EMCON,
-    XNET,
-    CHAOS,
-    UDP,
-    IPV6,
-    Other(u8),
-}
 #[derive(Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]
 pub struct IPv4Header {
@@ -40,35 +17,10 @@ pub struct IPv4Header {
     pub flags: u8,
     pub fragment_offset: u16,
     pub ttl: u8,
-    pub protocol: IPv4Protocol,
+    pub protocol: IPProtocol,
     pub chksum: u16,
     pub source_addr: Ipv4Addr,
     pub dest_addr: Ipv4Addr,
-}
-
-fn to_ipv4_protocol(i: u8) -> Option<IPv4Protocol> {
-    match i {
-        0 => Some(IPv4Protocol::HOPOPT),
-        1 => Some(IPv4Protocol::ICMP),
-        2 => Some(IPv4Protocol::IGMP),
-        3 => Some(IPv4Protocol::GGP),
-        4 => Some(IPv4Protocol::IPINIP),
-        5 => Some(IPv4Protocol::ST),
-        6 => Some(IPv4Protocol::TCP),
-        7 => Some(IPv4Protocol::CBT),
-        8 => Some(IPv4Protocol::EGP),
-        9 => Some(IPv4Protocol::IGP),
-        10 => Some(IPv4Protocol::BBNRCCMON),
-        11 => Some(IPv4Protocol::NVPII),
-        12 => Some(IPv4Protocol::PUP),
-        13 => Some(IPv4Protocol::ARGUS),
-        14 => Some(IPv4Protocol::EMCON),
-        15 => Some(IPv4Protocol::XNET),
-        16 => Some(IPv4Protocol::CHAOS),
-        17 => Some(IPv4Protocol::UDP),
-        41 => Some(IPv4Protocol::IPV6),
-        other => Some(IPv4Protocol::Other(other)),
-    }
 }
 
 pub fn to_ipv4_address(i: &[u8]) -> Ipv4Addr {
@@ -77,7 +29,7 @@ pub fn to_ipv4_address(i: &[u8]) -> Ipv4Addr {
 
 named!(two_nibbles<&[u8], (u8, u8)>, bits!(pair!(take_bits!(u8, 4), take_bits!(u8, 4))));
 named!(flag_frag_offset<&[u8], (u8, u16)>, bits!(pair!(take_bits!(u8, 3), take_bits!(u16, 13))));
-named!(protocol<&[u8], IPv4Protocol>, map_opt!(be_u8, to_ipv4_protocol));
+named!(protocol<&[u8], IPProtocol>, map!(be_u8, ip::to_ip_protocol));
 named!(address<&[u8], Ipv4Addr>, map!(take!(4), to_ipv4_address));
 
 named!(ipparse<&[u8], IPv4Header>,
@@ -112,7 +64,7 @@ pub fn parse_ipv4_header(i: &[u8]) -> IResult<&[u8], IPv4Header> {
 
 #[cfg(test)]
 mod tests {
-    use super::{protocol, IPv4Protocol, ipparse, IPv4Header};
+    use super::{protocol, IPProtocol, ipparse, IPv4Header};
     use std::net::Ipv4Addr;
 
     const EMPTY_SLICE: &'static [u8] = &[];
@@ -126,9 +78,9 @@ mod tests {
         )
     }
 
-    mk_protocol_test!(protocol_gets_icmp_correct, [1], IPv4Protocol::ICMP);
-    mk_protocol_test!(protocol_gets_tcp_correct, [6], IPv4Protocol::TCP);
-    mk_protocol_test!(protocol_gets_udp_correct, [17], IPv4Protocol::UDP);
+    mk_protocol_test!(protocol_gets_icmp_correct, [1], IPProtocol::ICMP);
+    mk_protocol_test!(protocol_gets_tcp_correct, [6], IPProtocol::TCP);
+    mk_protocol_test!(protocol_gets_udp_correct, [17], IPProtocol::UDP);
 
     #[test]
     fn ipparse_gets_packet_correct() {
@@ -152,7 +104,7 @@ mod tests {
             flags: 0x01,
             fragment_offset: 0,
             ttl: 64,
-            protocol: IPv4Protocol::ICMP,
+            protocol: IPProtocol::ICMP,
             chksum: 0x22ed,
             source_addr: Ipv4Addr::new(10, 10, 1, 135),
             dest_addr: Ipv4Addr::new(10, 10, 1, 180),
