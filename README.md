@@ -12,10 +12,11 @@ Admitting your `packet.data` is an `[u8]`:
 For now the list of available parsers is rather short:
 - ethernet (with optional VLAN tag)
 - IPv4
+- IPv6
 - UDP
 - TCP
 ... but I'll gladly accept contributions.
 
 ## Last changes
 
-- IPv6 support
+- VLAN tag support
