@@ -10,7 +10,7 @@ Admitting your `packet.data` is an `[u8]`:
             if let Done(remaining, ipv4_packet) = ipv4::parse_ipv4_header(remaining) {
 ```
 For now the list of available parsers is rather short:
-- ethernet
+- ethernet (with optional VLAN tag)
 - IPv4
 - UDP
 - TCP
