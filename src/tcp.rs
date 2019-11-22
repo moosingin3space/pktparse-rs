@@ -1,7 +1,7 @@
 //! Handles parsing of TCP headers
 
-use nom::{IResult, Needed, Err, be_u8};
 use nom::Endianness::Big;
+use nom::{be_u8, Err, IResult, Needed};
 
 // TCP Header Format
 //
@@ -34,8 +34,7 @@ use nom::Endianness::Big;
 //    SYN:  Synchronize sequence numbers
 //    FIN:  No more data from sender
 
-
-const END_OF_OPTIONS: u8 =  0;
+const END_OF_OPTIONS: u8 = 0;
 const NO_OP: u8 = 1;
 const MSS: u8 = 2;
 const WINDOW_SCALE: u8 = 3;
@@ -118,7 +117,6 @@ named!(tcp_parse<&[u8], TcpHeader>,
                   options : None
               }})));
 
-
 named!(tcp_parse_option<&[u8], TcpOption>,
         switch!(be_u8,
             END_OF_OPTIONS => do_parse!(take!(0) >>
@@ -147,7 +145,7 @@ fn tcp_parse_options(i: &[u8]) -> IResult<&[u8], Vec<TcpOption>> {
                 if let TcpOption::EndOfOptions = opt {
                     break;
                 }
-            },
+            }
             Err(e) => return Err(e),
         }
     }
@@ -177,7 +175,6 @@ pub fn parse_tcp_header(i: &[u8]) -> IResult<&[u8], TcpHeader> {
 
         e => e,
     }
-
 }
 
 #[cfg(test)]
@@ -189,13 +186,15 @@ mod tests {
 
     #[test]
     fn test_tcp_parse() {
-        let bytes = [0xc2, 0x1f, /* Source port */
-                     0x00, 0x50, /* Dest port */
-                     0x0f, 0xd8, 0x7f, 0x4c, /* Seq no */
-                     0xeb, 0x2f, 0x05, 0xc8, /* Ack no */
-                     0x50, 0x18, 0x01, 0x00, /* Window */
-                     0x7c, 0x29, /* Checksum */
-                     0x00, 0x00 /* Urgent pointer */];
+        let bytes = [
+            0xc2, 0x1f, /* Source port */
+            0x00, 0x50, /* Dest port */
+            0x0f, 0xd8, 0x7f, 0x4c, /* Seq no */
+            0xeb, 0x2f, 0x05, 0xc8, /* Ack no */
+            0x50, 0x18, 0x01, 0x00, /* Window */
+            0x7c, 0x29, /* Checksum */
+            0x00, 0x00, /* Urgent pointer */
+        ];
 
         let expectation = TcpHeader {
             source_port: 49695,

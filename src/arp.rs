@@ -1,11 +1,11 @@
 //! Handles parsing of Arp pakets
 
-use nom::{IResult, be_u8};
 use nom::Endianness::Big;
+use nom::{be_u8, IResult};
 
 use std::net::Ipv4Addr;
 
-use crate::ethernet::{MacAddress, to_mac_address};
+use crate::ethernet::{to_mac_address, MacAddress};
 use crate::ipv4::to_ipv4_address;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -61,7 +61,7 @@ pub struct ArpPacket {
     pub hw_addr_size: u8,
     pub proto_addr_size: u8,
 
-    pub operation : Operation,
+    pub operation: Operation,
 
     pub src_mac: MacAddress,
     pub src_addr: Ipv4Addr,
@@ -113,7 +113,9 @@ pub fn parse_arp_pkt(i: &[u8]) -> IResult<&[u8], ArpPacket> {
 
 #[cfg(test)]
 mod tests {
-    use super::{arp_packet, ArpPacket, MacAddress, HardwareAddressType, ProtocolAddressType, Operation};
+    use super::{
+        arp_packet, ArpPacket, HardwareAddressType, MacAddress, Operation, ProtocolAddressType,
+    };
     use std::net::Ipv4Addr;
 
     const EMPTY_SLICE: &'static [u8] = &[];

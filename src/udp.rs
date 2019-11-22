@@ -23,14 +23,15 @@ named!(pub parse_udp_header<&[u8], UdpHeader>, do_parse!(
 
 #[cfg(test)]
 mod tests {
-    use super::{UdpHeader, parse_udp_header};
+    use super::{parse_udp_header, UdpHeader};
     const EMPTY_SLICE: &'static [u8] = &[];
 
     #[test]
     fn udp_header_works() {
-        let bytes = [0x00, 0x12, 0x11, 0x11, // source & destination ports
-                     0x00, 0x1b, 0x21, 0x0f, // length & checksum
-                    ];
+        let bytes = [
+            0x00, 0x12, 0x11, 0x11, // source & destination ports
+            0x00, 0x1b, 0x21, 0x0f, // length & checksum
+        ];
         let expectation = UdpHeader {
             source_port: 0x12,
             dest_port: 0x1111,

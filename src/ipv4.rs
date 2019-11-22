@@ -1,8 +1,8 @@
 //! Handles parsing of IPv4 headers
 
 use crate::ip::{self, IPProtocol};
-use nom::{IResult, be_u8};
 use nom::Endianness::Big;
+use nom::{be_u8, IResult};
 use std::convert::TryFrom;
 use std::net::Ipv4Addr;
 
@@ -64,18 +64,18 @@ pub fn parse_ipv4_header(i: &[u8]) -> IResult<&[u8], IPv4Header> {
 
 #[cfg(test)]
 mod tests {
-    use super::{protocol, IPProtocol, ipparse, IPv4Header};
+    use super::{ipparse, protocol, IPProtocol, IPv4Header};
     use std::net::Ipv4Addr;
 
     const EMPTY_SLICE: &'static [u8] = &[];
     macro_rules! mk_protocol_test {
-        ($func_name:ident, $bytes:expr, $correct_proto:expr) => (
+        ($func_name:ident, $bytes:expr, $correct_proto:expr) => {
             #[test]
             fn $func_name() {
                 let bytes = $bytes;
                 assert_eq!(protocol(&bytes), Ok((EMPTY_SLICE, $correct_proto)));
             }
-        )
+        };
     }
 
     mk_protocol_test!(protocol_gets_icmp_correct, [1], IPProtocol::ICMP);
@@ -84,16 +84,18 @@ mod tests {
 
     #[test]
     fn ipparse_gets_packet_correct() {
-        let bytes = [0x45, /* IP version and length = 20 */
-                     0x00, /* Differentiated services field */
-                     0x05, 0xdc, /* Total length */
-                     0x1a, 0xe6, /* Identification */
-                     0x20, 0x00, /* flags and fragment offset */
-                     0x40, /* TTL */
-                     0x01, /* protocol */
-                     0x22, 0xed, /* checksum */
-                     0x0a, 0x0a, 0x01, 0x87, /* source IP */
-                     0x0a, 0x0a, 0x01, 0xb4, /* destination IP */];
+        let bytes = [
+            0x45, /* IP version and length = 20 */
+            0x00, /* Differentiated services field */
+            0x05, 0xdc, /* Total length */
+            0x1a, 0xe6, /* Identification */
+            0x20, 0x00, /* flags and fragment offset */
+            0x40, /* TTL */
+            0x01, /* protocol */
+            0x22, 0xed, /* checksum */
+            0x0a, 0x0a, 0x01, 0x87, /* source IP */
+            0x0a, 0x0a, 0x01, 0xb4, /* destination IP */
+        ];
 
         let expectation = IPv4Header {
             version: 4,
