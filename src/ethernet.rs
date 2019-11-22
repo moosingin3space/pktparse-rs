@@ -66,6 +66,21 @@ pub struct EthernetFrame {
     pub ethertype: EtherType,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]
+pub struct VlanEthernetFrame {
+    pub source_mac: MacAddress,
+    pub dest_mac: MacAddress,
+    pub ethertype: EtherType,
+    pub vid: Option<u16>,
+}
+
+/// The VID and actual ethertype that comes after the VLAN identifier 0x8100
+struct VidEthertype {
+    vid: u16,
+    ethertype: EtherType,
+}
+
 fn to_ethertype(i: u16) -> Option<EtherType> {
     match i {
         0x002E => Some(EtherType::LANMIN),    // 802.3 Min data length
@@ -130,9 +145,34 @@ named!(ethernet_frame<&[u8], EthernetFrame>, do_parse!(
     et: ethertype >>
     (EthernetFrame{source_mac: src_mac, dest_mac: dest_mac, ethertype: et})
 ));
+named!(vid_ethertype<&[u8], VidEthertype>, do_parse!(
+    vid: u16!(Big) >>
+    et: ethertype >>
+    (VidEthertype{vid, ethertype: et})
+));
+named!(vlan_ethernet_frame<&[u8], VlanEthernetFrame>, do_parse!(
+    dest_mac: mac_address >>
+    src_mac: mac_address >>
+    et: ethertype >>
+    (VlanEthernetFrame{source_mac: src_mac, dest_mac: dest_mac, ethertype: et, vid: None})
+));
+
 
 pub fn parse_ethernet_frame(i: &[u8]) -> IResult<&[u8], EthernetFrame> {
     ethernet_frame(i)
+}
+
+/// Similar to `parse_ethernet_frame` but returns a `VlanEthernetFrame` on success. This uses more
+/// CPU cycles but handles both tagged and untagged ethernet traffic.
+pub fn parse_vlan_ethernet_frame(i: &[u8]) -> IResult<&[u8], VlanEthernetFrame> {
+    let (mut frame_content, mut frame) = vlan_ethernet_frame(i)?;
+    if frame.ethertype == EtherType::VLAN {
+        let (fc, vid_et) = vid_ethertype(frame_content)?;
+        frame.vid = Some(vid_et.vid);
+        frame.ethertype = vid_et.ethertype;
+        frame_content = fc;
+    }
+    Ok((frame_content, frame))
 }
 
 #[cfg(test)]
@@ -174,5 +214,42 @@ mod tests {
             ethertype: EtherType::IPv4,
         };
         assert_eq!(ethernet_frame(&bytes), Ok((EMPTY_SLICE, expectation)));
+    }
+
+    #[test]
+    fn parse_vlan_ethernet_frame_works() {
+        use super::{parse_vlan_ethernet_frame, VlanEthernetFrame};
+        let bytes = [
+            0x00, 0x23, 0x54, 0x07, 0x93, 0x6c, /* dest MAC */
+            0x00, 0x1b, 0x21, 0x0f, 0x91, 0x9b, /* src MAC */
+            0x81, 0x00, 0x04, 0xd2, // VLAN
+            0x08, 0x00, // Ethertype
+        ];
+        let expectation = VlanEthernetFrame {
+            source_mac: MacAddress([0x00, 0x1b, 0x21, 0x0f, 0x91, 0x9b]),
+            dest_mac: MacAddress([0x00, 0x23, 0x54, 0x07, 0x93, 0x6c]),
+            ethertype: EtherType::IPv4,
+            vid: Some(1234),
+        };
+        assert_eq!(
+            parse_vlan_ethernet_frame(&bytes),
+            Ok((EMPTY_SLICE, expectation))
+        );
+
+        let bytes = [
+            0x00, 0x23, 0x54, 0x07, 0x93, 0x6c, /* dest MAC */
+            0x00, 0x1b, 0x21, 0x0f, 0x91, 0x9b, /* src MAC */
+            0x08, 0x00, // Ethertype
+        ];
+        let expectation = VlanEthernetFrame {
+            source_mac: MacAddress([0x00, 0x1b, 0x21, 0x0f, 0x91, 0x9b]),
+            dest_mac: MacAddress([0x00, 0x23, 0x54, 0x07, 0x93, 0x6c]),
+            ethertype: EtherType::IPv4,
+            vid: None,
+        };
+        assert_eq!(
+            parse_vlan_ethernet_frame(&bytes),
+            Ok((EMPTY_SLICE, expectation))
+        );
     }
 }
