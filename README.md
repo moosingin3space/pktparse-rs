@@ -17,6 +17,7 @@ For now the list of available parsers is rather short:
 - TCP
 ... but I'll gladly accept contributions.
 
-## Last changes
+## Last changes (thanks @Stargateur !)
 
-- VLAN tag support
+- migrated to nom 5.1
+- added Clone & Copy traits when possible
