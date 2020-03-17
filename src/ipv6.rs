@@ -1,13 +1,16 @@
 //! Handles parsing of IPv6 headers
 
 use crate::ip::{self, IPProtocol};
-use nom::Endianness::Big;
-use nom::{be_u8, IResult};
+use nom::bits;
+use nom::bytes;
+use nom::error::ErrorKind;
+use nom::number;
+use nom::IResult;
 use std::convert::TryFrom;
 use std::net::Ipv6Addr;
 
-#[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct IPv6Header {
     pub version: u8,
     pub ds: u8,
@@ -20,29 +23,34 @@ pub struct IPv6Header {
     pub dest_addr: Ipv6Addr,
 }
 
-pub fn to_ipv6_address(i: &[u8]) -> Ipv6Addr {
-    Ipv6Addr::from(<[u8; 16]>::try_from(i).unwrap())
+pub(crate) fn address(input: &[u8]) -> IResult<&[u8], Ipv6Addr> {
+    let (input, ipv6) = bytes::streaming::take(16u8)(input)?;
+
+    Ok((input, Ipv6Addr::from(<[u8; 16]>::try_from(ipv6).unwrap())))
 }
 
-named!(two_nibbles<&[u8], (u8, u8)>, bits!(pair!(take_bits!(u8, 4), take_bits!(u8, 4))));
-named!(protocol<&[u8], IPProtocol>, map!(be_u8, ip::to_ip_protocol));
-named!(address<&[u8], Ipv6Addr>, map!(take!(16), to_ipv6_address));
-
 /*
-ds: bits!(take_bits!(u8, 6)) >>
-ecn: bits!(take_bits!(u8, 2)) >>
-flow_label: bits!(take_bits!(u32, 20)) >>
+let (input, ds): (_, u8) =
+    bits::bits::<_, _, (_, ErrorKind), _, _>(bits::streaming::take(6u8))(input)?;
+let (input, ecn): (_, u8) =
+    bits::bits::<_, _, (_, ErrorKind), _, _>(bits::streaming::take(2u8))(input)?;
+let (input, flow_label): (_, u32) =
+    bits::bits::<_, _, (_, ErrorKind), _, _>(bits::streaming::take(20u8))(input)?;
 */
-named!(ipparse<&[u8], IPv6Header>,
-    do_parse!(ver_tc : two_nibbles >>
-        tc_fl : two_nibbles >>
-        fl : bits!(take_bits!(u32, 16)) >>
-        length : u16!(Big) >>
-        next_header : protocol >>
-        hop_limit : be_u8 >>
-        source_addr : address >>
-        dest_addr : address >>
-        ({ IPv6Header {
+pub fn parse_ipv6_header(input: &[u8]) -> IResult<&[u8], IPv6Header> {
+    let (input, ver_tc) = ip::two_nibbles(input)?;
+    let (input, tc_fl) = ip::two_nibbles(input)?;
+    let (input, fl): (_, u32) =
+        bits::bits::<_, _, (_, ErrorKind), _, _>(bits::streaming::take(16u8))(input)?;
+    let (input, length) = number::streaming::be_u16(input)?;
+    let (input, next_header) = ip::protocol(input)?;
+    let (input, hop_limit) = number::streaming::be_u8(input)?;
+    let (input, source_addr) = address(input)?;
+    let (input, dest_addr) = address(input)?;
+
+    Ok((
+        input,
+        IPv6Header {
             version: ver_tc.0,
             ds: (ver_tc.1 << 2) + ((tc_fl.0 & 0b1100) >> 2),
             ecn: tc_fl.0 & 0b11,
@@ -52,15 +60,13 @@ named!(ipparse<&[u8], IPv6Header>,
             hop_limit,
             source_addr,
             dest_addr,
-        }})));
-
-pub fn parse_ipv6_header(i: &[u8]) -> IResult<&[u8], IPv6Header> {
-    ipparse(i)
+        },
+    ))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{ipparse, protocol, IPProtocol, IPv6Header};
+    use super::{ip::protocol, parse_ipv6_header, IPProtocol, IPv6Header};
     use std::net::Ipv6Addr;
 
     const EMPTY_SLICE: &'static [u8] = &[];
@@ -110,6 +116,6 @@ mod tests {
                 0x2001, 0xdb8, 0x7890, 0x2ae9, 0x908f, 0xa9f4, 0x2f4a, 0x9b80,
             ),
         };
-        assert_eq!(ipparse(&bytes), Ok((EMPTY_SLICE, expectation)));
+        assert_eq!(parse_ipv6_header(&bytes), Ok((EMPTY_SLICE, expectation)));
     }
 }

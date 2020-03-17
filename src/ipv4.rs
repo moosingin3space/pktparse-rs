@@ -1,13 +1,17 @@
 //! Handles parsing of IPv4 headers
 
 use crate::ip::{self, IPProtocol};
-use nom::Endianness::Big;
-use nom::{be_u8, IResult};
+use nom::bits;
+use nom::bytes;
+use nom::error::ErrorKind;
+use nom::number;
+use nom::sequence;
+use nom::IResult;
 use std::convert::TryFrom;
 use std::net::Ipv4Addr;
 
-#[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "derive", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct IPv4Header {
     pub version: u8,
     pub ihl: u8,
@@ -23,48 +27,53 @@ pub struct IPv4Header {
     pub dest_addr: Ipv4Addr,
 }
 
-pub fn to_ipv4_address(i: &[u8]) -> Ipv4Addr {
-    Ipv4Addr::from(<[u8; 4]>::try_from(i).unwrap())
+fn flag_frag_offset(input: &[u8]) -> IResult<&[u8], (u8, u16)> {
+    bits::bits::<_, _, (_, ErrorKind), _, _>(sequence::pair(
+        bits::streaming::take(3u8),
+        bits::streaming::take(13u16),
+    ))(input)
 }
 
-named!(two_nibbles<&[u8], (u8, u8)>, bits!(pair!(take_bits!(u8, 4), take_bits!(u8, 4))));
-named!(flag_frag_offset<&[u8], (u8, u16)>, bits!(pair!(take_bits!(u8, 3), take_bits!(u16, 13))));
-named!(protocol<&[u8], IPProtocol>, map!(be_u8, ip::to_ip_protocol));
-named!(address<&[u8], Ipv4Addr>, map!(take!(4), to_ipv4_address));
+pub(crate) fn address(input: &[u8]) -> IResult<&[u8], Ipv4Addr> {
+    let (input, ipv4) = bytes::streaming::take(4u8)(input)?;
 
-named!(ipparse<&[u8], IPv4Header>,
-       do_parse!(verihl : two_nibbles >>
-              tos : be_u8 >>
-              length : u16!(Big) >>
-              id : u16!(Big) >>
-              flagfragoffset : flag_frag_offset >>
-              ttl : be_u8 >>
-              proto : protocol >>
-              chksum : u16!(Big) >>
-              src_addr : address >>
-              dst_addr : address >>
-              ({ IPv4Header {
-                  version: verihl.0,
-                  ihl: verihl.1 << 2,
-                  tos: tos,
-                  length: length,
-                  id: id,
-                  flags: flagfragoffset.0,
-                  fragment_offset: flagfragoffset.1,
-                  ttl: ttl,
-                  protocol: proto,
-                  chksum: chksum,
-                  source_addr: src_addr,
-                  dest_addr : dst_addr,
-              }})));
+    Ok((input, Ipv4Addr::from(<[u8; 4]>::try_from(ipv4).unwrap())))
+}
 
-pub fn parse_ipv4_header(i: &[u8]) -> IResult<&[u8], IPv4Header> {
-    ipparse(i)
+pub fn parse_ipv4_header(input: &[u8]) -> IResult<&[u8], IPv4Header> {
+    let (input, verihl) = ip::two_nibbles(input)?;
+    let (input, tos) = number::streaming::be_u8(input)?;
+    let (input, length) = number::streaming::be_u16(input)?;
+    let (input, id) = number::streaming::be_u16(input)?;
+    let (input, flag_frag_offset) = flag_frag_offset(input)?;
+    let (input, ttl) = number::streaming::be_u8(input)?;
+    let (input, protocol) = ip::protocol(input)?;
+    let (input, chksum) = number::streaming::be_u16(input)?;
+    let (input, source_addr) = address(input)?;
+    let (input, dest_addr) = address(input)?;
+
+    Ok((
+        input,
+        IPv4Header {
+            version: verihl.0,
+            ihl: verihl.1 << 2,
+            tos,
+            length,
+            id,
+            flags: flag_frag_offset.0,
+            fragment_offset: flag_frag_offset.1,
+            ttl,
+            protocol,
+            chksum,
+            source_addr,
+            dest_addr,
+        },
+    ))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{ipparse, protocol, IPProtocol, IPv4Header};
+    use super::{ip::protocol, parse_ipv4_header, IPProtocol, IPv4Header};
     use std::net::Ipv4Addr;
 
     const EMPTY_SLICE: &'static [u8] = &[];
@@ -111,6 +120,6 @@ mod tests {
             source_addr: Ipv4Addr::new(10, 10, 1, 135),
             dest_addr: Ipv4Addr::new(10, 10, 1, 180),
         };
-        assert_eq!(ipparse(&bytes), Ok((EMPTY_SLICE, expectation)));
+        assert_eq!(parse_ipv4_header(&bytes), Ok((EMPTY_SLICE, expectation)));
     }
 }
