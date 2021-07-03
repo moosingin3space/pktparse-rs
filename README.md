@@ -15,9 +15,10 @@ For now the list of available parsers is rather short:
 - IPv6
 - UDP
 - TCP
-... but I'll gladly accept contributions.
+- ICMP
+... and we'll gladly accept contributions.
 
-## Last changes (thanks @Stargateur !)
+## Last changes
 
-- migrated to nom 5.1
-- added Clone & Copy traits when possible
+- migrated to nom 6
+- added some ICMP support
