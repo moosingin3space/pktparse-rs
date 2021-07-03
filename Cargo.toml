@@ -1,12 +1,14 @@
 [package]
 name = "pktparse"
-version = "0.5.1-alpha.0"
+version = "0.6.0"
 authors = ["Antoine Plaskowski", "Nathan Moos", "Xavier Bestel"]
 description = "Collection of packet parsers"
 repository = "https://github.com/bestouff/pktparse-rs"
 readme = "README.md"
 license = "LGPL-3.0"
 edition = "2018"
+keywords = ["network", "packet", "parsing", "nom", "library"]
+categories = ["encoding", "network-programming", "parser-implementations"]
 
 [dependencies]
 nom = "6"
