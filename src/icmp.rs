@@ -160,6 +160,7 @@ fn parse_icmp_code(input: &[u8]) -> IResult<&[u8], IcmpCode> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
 pub struct IcmpPayloadPacket([u8; 8]);
 
