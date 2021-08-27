@@ -20,5 +20,4 @@ For now the list of available parsers is rather short:
 
 ## Last changes
 
-- migrated to nom 6
-- added some ICMP support
+- migrated to nom 7

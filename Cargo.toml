@@ -1,6 +1,6 @@
 [package]
 name = "pktparse"
-version = "0.6.1"
+version = "0.7.0"
 authors = ["Antoine Plaskowski", "Nathan Moos", "Xavier Bestel"]
 description = "Collection of packet parsers"
 repository = "https://github.com/bestouff/pktparse-rs"
@@ -11,5 +11,5 @@ keywords = ["network", "packet", "parsing", "nom", "library"]
 categories = ["encoding", "network-programming", "parser-implementations"]
 
 [dependencies]
-nom = "6"
+nom = "7"
 serde = { version = "1.0", optional = true, features = ["derive"] }
