@@ -32,7 +32,7 @@ mod tests {
         };
         let ip_expectation = IPv4Header {
             version: 4,
-            ihl: 20,
+            ihl: 5,
             tos: 0,
             length: 1500,
             id: 0x1ae6,

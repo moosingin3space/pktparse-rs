@@ -56,7 +56,7 @@ pub fn parse_ipv4_header(input: &[u8]) -> IResult<&[u8], IPv4Header> {
         input,
         IPv4Header {
             version: verihl.0,
-            ihl: verihl.1 << 2,
+            ihl: verihl.1,
             tos,
             length,
             id,
@@ -108,7 +108,7 @@ mod tests {
 
         let expectation = IPv4Header {
             version: 4,
-            ihl: 20,
+            ihl: 5,
             tos: 0,
             length: 1500,
             id: 0x1ae6,
