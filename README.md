@@ -20,4 +20,4 @@ For now the list of available parsers is rather short:
 
 ## Last changes
 
-- migrated to nom 7
+- IHL is not multiplied by 4 anymore
