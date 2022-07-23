@@ -1,6 +1,10 @@
 //! Handles parsing of TCP headers
 
-use nom::IResult;
+use nom::bits;
+use nom::error::{Error, ErrorKind};
+use nom::number;
+use nom::sequence;
+use nom::{Err, IResult, Needed};
 
 // TCP Header Format
 //
@@ -33,9 +37,37 @@ use nom::IResult;
 //    SYN:  Synchronize sequence numbers
 //    FIN:  No more data from sender
 
+const END_OF_OPTIONS: u8 = 0;
+const NO_OP: u8 = 1;
+const MSS: u8 = 2;
+const WINDOW_SCALE: u8 = 3;
+const SACK_PERMITTED: u8 = 4;
 
-#[derive(Debug, PartialEq, Eq, Default)]
-pub struct TcpHeader<'a> {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum TcpOption {
+    EndOfOptions,
+    NoOperation,
+    MaximumSegmentSize(MaximumSegmentSize),
+    WindowScale(WindowScale),
+    SackPermitted,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct MaximumSegmentSize {
+    pub mss: u16,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct WindowScale {
+    pub scaling: u8,
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct TcpHeader {
     pub source_port: u16,
     pub dest_port: u16,
     pub sequence_no: u32,
@@ -51,85 +83,144 @@ pub struct TcpHeader<'a> {
     pub window: u16,
     pub checksum: u16,
     pub urgent_pointer: u16,
-    pub options: Option<&'a[u8]>,
+    pub options: Option<Vec<TcpOption>>,
 }
-named!(dataof_res_flags<&[u8], (u8, u8, u8)>,
-    bits!(tuple!(
-        take_bits!(u8, 4),
-        take_bits!(u8, 6),
-        take_bits!(u8, 6))));
 
-named!(tcp_parse<&[u8], TcpHeader>,
-       dbg_dmp!(chain!(src: u16!(true) ~
-              dst: u16!(true) ~
-              seq: u32!(true) ~
-              ack: u32!(true) ~
-              dataof_res_flags : dataof_res_flags ~
-              window : u16!(true) ~
-              checksum : u16!(true) ~
-              urgent_ptr : u16!(true),
-              || {
-                  TcpHeader {
-                  source_port: src,
-                  dest_port : dst,
-                  sequence_no : seq,
-                  ack_no : ack,
-                  data_offset : dataof_res_flags.0 * 4,
-                  reserved : dataof_res_flags.1,
-                  flag_urg : dataof_res_flags.2 & 0b100000 == 0b100000,
-                  flag_ack : dataof_res_flags.2 & 0b010000 == 0b010000,
-                  flag_psh : dataof_res_flags.2 & 0b001000 == 0b001000,
-                  flag_rst : dataof_res_flags.2 & 0b000100 == 0b000100,
-                  flag_syn : dataof_res_flags.2 & 0b000010 == 0b000010,
-                  flag_fin : dataof_res_flags.2 & 0b000001 == 0b000001,
-                  window : window,
-                  checksum : checksum,
-                  urgent_pointer : urgent_ptr,
-                  options : None
-              }})));
+fn dataof_res_flags(input: &[u8]) -> IResult<&[u8], (u8, u8, u8)> {
+    bits::bits::<_, _, Error<_>, _, _>(sequence::tuple((
+        bits::streaming::take(4u8),
+        bits::streaming::take(6u8),
+        bits::streaming::take(6u8),
+    )))(input)
+}
+
+fn tcp_parse(input: &[u8]) -> IResult<&[u8], TcpHeader> {
+    let (input, source_port) = number::streaming::be_u16(input)?;
+    let (input, dest_port) = number::streaming::be_u16(input)?;
+    let (input, sequence_no) = number::streaming::be_u32(input)?;
+    let (input, ack_no) = number::streaming::be_u32(input)?;
+    let (input, dataof_res_flags) = dataof_res_flags(input)?;
+    let (input, window) = number::streaming::be_u16(input)?;
+    let (input, checksum) = number::streaming::be_u16(input)?;
+    let (input, urgent_pointer) = number::streaming::be_u16(input)?;
+
+    Ok((
+        input,
+        TcpHeader {
+            source_port,
+            dest_port,
+            sequence_no,
+            ack_no,
+            data_offset: dataof_res_flags.0,
+            reserved: dataof_res_flags.1,
+            flag_urg: dataof_res_flags.2 & 0b10_0000 == 0b10_0000,
+            flag_ack: dataof_res_flags.2 & 0b01_0000 == 0b01_0000,
+            flag_psh: dataof_res_flags.2 & 0b00_1000 == 0b00_1000,
+            flag_rst: dataof_res_flags.2 & 0b00_0100 == 0b00_0100,
+            flag_syn: dataof_res_flags.2 & 0b00_0010 == 0b00_0010,
+            flag_fin: dataof_res_flags.2 & 0b00_0001 == 0b00_0001,
+            window,
+            checksum,
+            urgent_pointer,
+            options: None,
+        },
+    ))
+}
+
+fn tcp_parse_option(input: &[u8]) -> IResult<&[u8], TcpOption> {
+    match number::streaming::be_u8(input)? {
+        (input, END_OF_OPTIONS) => Ok((input, TcpOption::EndOfOptions)),
+        (input, NO_OP) => Ok((input, TcpOption::NoOperation)),
+        (input, MSS) => {
+            let (input, _len) = number::streaming::be_u8(input)?;
+            let (input, mss) = number::streaming::be_u16(input)?;
+            Ok((
+                input,
+                TcpOption::MaximumSegmentSize(MaximumSegmentSize { mss }),
+            ))
+        }
+        (input, WINDOW_SCALE) => {
+            let (input, _len) = number::streaming::be_u8(input)?;
+            let (input, scaling) = number::streaming::be_u8(input)?;
+            Ok((input, TcpOption::WindowScale(WindowScale { scaling })))
+        }
+        (input, SACK_PERMITTED) => {
+            let (input, _len) = number::streaming::be_u8(input)?;
+            Ok((input, TcpOption::SackPermitted))
+        }
+        _ => Err(Err::Failure(Error::new(input, ErrorKind::Switch))),
+    }
+}
+
+fn tcp_parse_options(i: &[u8]) -> IResult<&[u8], Vec<TcpOption>> {
+    let mut left = i;
+    let mut options: Vec<TcpOption> = vec![];
+    loop {
+        match tcp_parse_option(left) {
+            Ok((l, opt)) => {
+                left = l;
+                options.push(opt);
+
+                if let TcpOption::EndOfOptions = opt {
+                    break;
+                }
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
+    Ok((left, options))
+}
 
 pub fn parse_tcp_header(i: &[u8]) -> IResult<&[u8], TcpHeader> {
     match tcp_parse(i) {
-        IResult::Done(left, mut tcp_header) => {
-            let options_length = (tcp_header.data_offset - 20) as usize;
-            // TODO: For now TcpHeader options are not parsed and contains the raw bytes.
-            if options_length > 0 {
-                tcp_header.options = Some(&left[..options_length]);
-                IResult::Done(&left[options_length..], tcp_header)
+        Ok((left, mut tcp_header)) => {
+            // Offset in words (at least 5)
+            if tcp_header.data_offset > 5 {
+                let options_length = ((tcp_header.data_offset - 5) * 4) as usize;
+                if options_length <= left.len() {
+                    if let Ok((_, options)) = tcp_parse_options(&left[0..options_length]) {
+                        tcp_header.options = Some(options);
+                        return Ok((&left[options_length..], tcp_header));
+                    }
+                    Ok((&left[options_length..], tcp_header))
+                } else {
+                    Err(Err::Incomplete(Needed::new(options_length - left.len())))
+                }
             } else {
-                IResult::Done(left, tcp_header)
+                Ok((left, tcp_header))
             }
         }
 
         e => e,
     }
-
 }
 
 #[cfg(test)]
 mod tests {
 
     use super::*;
-    use nom::IResult;
 
     const EMPTY_SLICE: &'static [u8] = &[];
 
     #[test]
     fn test_tcp_parse() {
-        let bytes = [0xc2, 0x1f, /* Source port */ 
-                     0x00, 0x50, /* Dest port */
-                     0x0f, 0xd8, 0x7f, 0x4c, /* Seq no */
-                     0xeb, 0x2f, 0x05, 0xc8, /* Ack no */
-                     0x50, 0x18, 0x01, 0x00, /* Window */
-                     0x7c, 0x29, /* Checksum */
-                     0x00, 0x00 /* Urgent pointer */];
+        let bytes = [
+            0xc2, 0x1f, /* Source port */
+            0x00, 0x50, /* Dest port */
+            0x0f, 0xd8, 0x7f, 0x4c, /* Seq no */
+            0xeb, 0x2f, 0x05, 0xc8, /* Ack no */
+            0x50, 0x18, 0x01, 0x00, /* Window */
+            0x7c, 0x29, /* Checksum */
+            0x00, 0x00, /* Urgent pointer */
+        ];
 
         let expectation = TcpHeader {
             source_port: 49695,
             dest_port: 80,
             sequence_no: 0x0fd87f4c,
             ack_no: 0xeb2f05c8,
-            data_offset: 20,
+            data_offset: 5,
             reserved: 0,
             flag_urg: false,
             flag_ack: true,
@@ -143,6 +234,6 @@ mod tests {
             options: None,
         };
 
-        assert_eq!(parse_tcp_header(&bytes), IResult::Done(EMPTY_SLICE, expectation));
+        assert_eq!(parse_tcp_header(&bytes), Ok((EMPTY_SLICE, expectation)));
     }
 }

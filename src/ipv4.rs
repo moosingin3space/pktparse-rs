@@ -1,16 +1,17 @@
 //! Handles parsing of IPv4 headers
 
-use nom::{IResult, be_u8};
+use crate::ip::{self, IPProtocol};
+use nom::bits;
+use nom::bytes;
+use nom::error::Error;
+use nom::number;
+use nom::sequence;
+use nom::IResult;
+use std::convert::TryFrom;
+use std::net::Ipv4Addr;
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct IPv4Address(pub [u8; 4]);
-#[derive(Debug, PartialEq, Eq)]
-pub enum IPv4Protocol {
-    ICMP,
-    TCP,
-    UDP,
-}
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct IPv4Header {
     pub version: u8,
     pub ihl: u8,
@@ -20,106 +21,105 @@ pub struct IPv4Header {
     pub flags: u8,
     pub fragment_offset: u16,
     pub ttl: u8,
-    pub protocol: IPv4Protocol,
+    pub protocol: IPProtocol,
     pub chksum: u16,
-    pub source_addr: IPv4Address,
-    pub dest_addr: IPv4Address,
+    pub source_addr: Ipv4Addr,
+    pub dest_addr: Ipv4Addr,
 }
 
-fn to_ipv4_protocol(i: u8) -> Option<IPv4Protocol> {
-    match i {
-        1 => Some(IPv4Protocol::ICMP),
-        6 => Some(IPv4Protocol::TCP),
-        17 => Some(IPv4Protocol::UDP),
-        _ => None,
-    }
+fn flag_frag_offset(input: &[u8]) -> IResult<&[u8], (u8, u16)> {
+    bits::bits::<_, _, Error<_>, _, _>(sequence::pair(
+        bits::streaming::take(3u8),
+        bits::streaming::take(13u16),
+    ))(input)
 }
 
-fn to_ipv4_address(i: &[u8]) -> IPv4Address {
-    IPv4Address(array_ref![i, 0, 4].clone())
+pub(crate) fn address(input: &[u8]) -> IResult<&[u8], Ipv4Addr> {
+    let (input, ipv4) = bytes::streaming::take(4u8)(input)?;
+
+    Ok((input, Ipv4Addr::from(<[u8; 4]>::try_from(ipv4).unwrap())))
 }
 
-named!(two_nibbles<&[u8], (u8, u8)>, bits!(pair!(take_bits!(u8, 4), take_bits!(u8, 4))));
-named!(flag_frag_offset<&[u8], (u8, u16)>, bits!(pair!(take_bits!(u8, 3), take_bits!(u16, 13))));
-named!(protocol<&[u8], IPv4Protocol>, map_opt!(be_u8, to_ipv4_protocol));
-named!(address<&[u8], IPv4Address>, map!(take!(4), to_ipv4_address));
+pub fn parse_ipv4_header(input: &[u8]) -> IResult<&[u8], IPv4Header> {
+    let (input, verihl) = ip::two_nibbles(input)?;
+    let (input, tos) = number::streaming::be_u8(input)?;
+    let (input, length) = number::streaming::be_u16(input)?;
+    let (input, id) = number::streaming::be_u16(input)?;
+    let (input, flag_frag_offset) = flag_frag_offset(input)?;
+    let (input, ttl) = number::streaming::be_u8(input)?;
+    let (input, protocol) = ip::protocol(input)?;
+    let (input, chksum) = number::streaming::be_u16(input)?;
+    let (input, source_addr) = address(input)?;
+    let (input, dest_addr) = address(input)?;
 
-named!(ipparse<&[u8], IPv4Header>,
-       chain!(verihl : two_nibbles ~
-              tos : be_u8 ~
-              length : u16!(true) ~
-              id : u16!(true) ~
-              flagfragoffset : flag_frag_offset ~
-              ttl : be_u8 ~
-              proto : protocol ~
-              chksum : u16!(true) ~
-              src_addr : address ~
-              dst_addr : address,
-              || { IPv4Header {
-                  version: verihl.0,
-                  ihl: verihl.1 << 2,
-                  tos: tos,
-                  length: length,
-                  id: id,
-                  flags: flagfragoffset.0,
-                  fragment_offset: flagfragoffset.1,
-                  ttl: ttl,
-                  protocol: proto,
-                  chksum: chksum,
-                  source_addr: src_addr,
-                  dest_addr : dst_addr,
-              }}));
-
-pub fn parse_ipv4_header(i: &[u8]) -> IResult<&[u8], IPv4Header> {
-    ipparse(i)
+    Ok((
+        input,
+        IPv4Header {
+            version: verihl.0,
+            ihl: verihl.1,
+            tos,
+            length,
+            id,
+            flags: flag_frag_offset.0,
+            fragment_offset: flag_frag_offset.1,
+            ttl,
+            protocol,
+            chksum,
+            source_addr,
+            dest_addr,
+        },
+    ))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{protocol, IPv4Protocol, ipparse, IPv4Header, IPv4Address};
-    use nom::IResult;
+    use super::{ip::protocol, parse_ipv4_header, IPProtocol, IPv4Header};
+    use std::net::Ipv4Addr;
+
     const EMPTY_SLICE: &'static [u8] = &[];
     macro_rules! mk_protocol_test {
-        ($func_name:ident, $bytes:expr, $correct_proto:expr) => (
+        ($func_name:ident, $bytes:expr, $correct_proto:expr) => {
             #[test]
             fn $func_name() {
                 let bytes = $bytes;
-                assert_eq!(protocol(&bytes), IResult::Done(EMPTY_SLICE, $correct_proto));
+                assert_eq!(protocol(&bytes), Ok((EMPTY_SLICE, $correct_proto)));
             }
-        )
+        };
     }
 
-    mk_protocol_test!(protocol_gets_icmp_correct, [1], IPv4Protocol::ICMP);
-    mk_protocol_test!(protocol_gets_tcp_correct, [6], IPv4Protocol::TCP);
-    mk_protocol_test!(protocol_gets_udp_correct, [17], IPv4Protocol::UDP);
+    mk_protocol_test!(protocol_gets_icmp_correct, [1], IPProtocol::ICMP);
+    mk_protocol_test!(protocol_gets_tcp_correct, [6], IPProtocol::TCP);
+    mk_protocol_test!(protocol_gets_udp_correct, [17], IPProtocol::UDP);
 
     #[test]
     fn ipparse_gets_packet_correct() {
-        let bytes = [0x45, /* IP version and length = 20 */
-                     0x00, /* Differentiated services field */ 
-                     0x05, 0xdc, /* Total length */ 
-                     0x1a, 0xe6, /* Identification */
-                     0x20, 0x00, /* flags and fragment offset */
-                     0x40, /* TTL */
-                     0x01, /* protocol */
-                     0x22, 0xed, /* checksum */
-                     0x0a, 0x0a, 0x01, 0x87, /* source IP */
-                     0x0a, 0x0a, 0x01, 0xb4, /* destination IP */];
+        let bytes = [
+            0x45, /* IP version and length = 20 */
+            0x00, /* Differentiated services field */
+            0x05, 0xdc, /* Total length */
+            0x1a, 0xe6, /* Identification */
+            0x20, 0x00, /* flags and fragment offset */
+            0x40, /* TTL */
+            0x01, /* protocol */
+            0x22, 0xed, /* checksum */
+            0x0a, 0x0a, 0x01, 0x87, /* source IP */
+            0x0a, 0x0a, 0x01, 0xb4, /* destination IP */
+        ];
 
         let expectation = IPv4Header {
             version: 4,
-            ihl: 20,
+            ihl: 5,
             tos: 0,
             length: 1500,
             id: 0x1ae6,
             flags: 0x01,
             fragment_offset: 0,
             ttl: 64,
-            protocol: IPv4Protocol::ICMP,
+            protocol: IPProtocol::ICMP,
             chksum: 0x22ed,
-            source_addr: IPv4Address([10, 10, 1, 135]),
-            dest_addr: IPv4Address([10, 10, 1, 180]),
+            source_addr: Ipv4Addr::new(10, 10, 1, 135),
+            dest_addr: Ipv4Addr::new(10, 10, 1, 180),
         };
-        assert_eq!(ipparse(&bytes), IResult::Done(EMPTY_SLICE, expectation));
+        assert_eq!(parse_ipv4_header(&bytes), Ok((EMPTY_SLICE, expectation)));
     }
 }
